@@ -1,8 +1,10 @@
 from pydantic import BaseModel
 
-from ..core.enums import RoomType
+from ..core.enums import RoomType, RoomVisibility
 
 
-class RoomCreate(BaseModel):
+class RoomCreateSchema(BaseModel):
     type: RoomType
-    name: str
+    name: str | None
+    slug: str | None
+    visibility: RoomVisibility = RoomVisibility.PUBLIC

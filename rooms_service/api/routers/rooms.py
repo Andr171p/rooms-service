@@ -5,7 +5,7 @@ from fastauth import CurrentUser
 
 from ...core.domain import Room
 from ...core.utils import configure_default_room_properties
-from ..schemas import RoomCreate
+from ..schemas import RoomCreateSchema
 
 rooms_router = APIRouter(prefix="/rooms", tags=["Rooms"], route_class=DishkaRoute)
 
@@ -16,7 +16,7 @@ rooms_router = APIRouter(prefix="/rooms", tags=["Rooms"], route_class=DishkaRout
     response_model=Room,
     summary="Создаёт комнату",
 )
-async def create_room(room_create: RoomCreate, current_user: CurrentUser) -> ...:
+async def create_room(room_create: RoomCreateSchema, current_user: CurrentUser) -> ...:
     room = Room(
         created_by=current_user.id,
         type=room_create.type,

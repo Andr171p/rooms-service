@@ -3,12 +3,11 @@ from typing import Any, Self
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from pydantic import AnyUrl, BaseModel, Field, model_validator
+from pydantic import AnyUrl, BaseModel, Field, field_validator, model_validator
 
-from .constants import HIGHEST_PRIORITY
-from .enums import InviteStatus, MemberStatus, RoleType, RoomType
-from .properties import RoomProperties
-from .utils import configure_default_room_properties, current_datetime
+from .constants import HIGHEST_PRIORITY, PERMISSION_CODE_PARTS
+from .enums import InviteStatus, MemberStatus, RoleType, RoomType, RoomVisibility
+from .utils import current_datetime
 
 
 class Room(BaseModel):
@@ -20,7 +19,8 @@ class Room(BaseModel):
         type: Тип комнаты: channel, group, ...
         avatar_url: URL аватарки комнаты.
         name: Имя комнаты.
-        properties: Настройки комнаты (приватность,
+        slug: Человеко-читаемый ID для URL.
+        visibility: Область видимости комнаты.
         created_at: Дата создания комнаты.
     """
     id: UUID = Field(default_factory=uuid4)
@@ -28,11 +28,9 @@ class Room(BaseModel):
     type: RoomType
     avatar_url: AnyUrl | None = None
     name: str | None = None
-    properties: RoomProperties
+    slug: str | None = None
+    visibility: RoomVisibility = RoomVisibility.PUBLIC
     created_at: datetime = Field(default_factory=current_datetime)
-
-    def configure_properties(self) -> None:
-        self.properties = configure_default_room_properties(self)
 
     @model_validator(mode="before")
     @classmethod
@@ -89,6 +87,12 @@ class Permission(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     code: str
     category: str
+
+    @field_validator("code", mode="before")
+    def validate_code(cls, code: str) -> str:
+        if len(code.split(":")) != PERMISSION_CODE_PARTS:
+            raise ValueError("Invalid permission code!")
+        return code
 
 
 class RolePermission(BaseModel):

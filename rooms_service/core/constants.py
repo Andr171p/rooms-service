@@ -2,6 +2,8 @@ from .enums import RoomType
 
 # Самый высокий приоритет роли
 HIGHEST_PRIORITY = 1
+# Количество частей в коде привилегий
+PERMISSION_CODE_PARTS = 2
 # Предельные значения числа участников группового чата
 DEFAULT_CHANNEL_MEMBERS = 10_000_000
 DEFAULT_GROUP_MEMBERS = 1_000

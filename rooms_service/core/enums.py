@@ -12,7 +12,6 @@ class RoomVisibility(StrEnum):
     """Видимость комнаты для других пользователей"""
     PRIVATE = "private"
     PUBLIC = "public"
-    UNLISTED = "unlisted"
 
 
 class MemberStatus(StrEnum):
