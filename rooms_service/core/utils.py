@@ -38,5 +38,5 @@ def configure_default_room_settings(
             max_members=TYPE_TO_MAX_MEMBERS_MAP[room_type],
             join_permission=join_permission
         ),
-        media_settings=RoomMediaSettings(),
+        media=RoomMediaSettings(),
     )

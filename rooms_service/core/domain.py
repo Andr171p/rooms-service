@@ -1,9 +1,9 @@
-from typing import Any, Self
+from typing import Self
 
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from pydantic import AnyUrl, BaseModel, Field, computed_field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from .constants import (
     HIGHEST_PRIORITY,
@@ -33,7 +33,7 @@ class Room(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     created_by: UUID
     type: RoomType
-    avatar_url: AnyUrl | None = None
+    avatar_url: str | None = None
     name: str | None = None
     slug: str | None = None
     visibility: RoomVisibility = RoomVisibility.PUBLIC
@@ -44,12 +44,11 @@ class Room(BaseModel):
     def settings(self) -> RoomSettings:
         return configure_default_room_settings(self.type, self.visibility)
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_name(cls, data: dict[str, Any]) -> Self:
-        if data["type"] == RoomType.DIRECT and data["name"] is not None:
+    @model_validator(mode="after")
+    def validate_name(self) -> Self:
+        if self.type == RoomType.DIRECT and self.name is not None:
             raise ValueError("Name of room with direct type must be None!")
-        return cls
+        return self
 
 
 class Member(BaseModel):

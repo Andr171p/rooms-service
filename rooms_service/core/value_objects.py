@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from typing import Any
+
 from collections import UserString
+from collections.abc import Callable
 
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema, core_schema
 
 from .constants import (
     DEFAULT_ADMINS,
@@ -40,6 +45,32 @@ class PermissionCode(UserString):
         if len(code.split(":")) != PERMISSION_CODE_PARTS:
             raise ValueError("Invalid permission code!")
         return code
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+            cls,
+            source_type: Any,
+            handler: Callable[[Any], CoreSchema],
+    ) -> CoreSchema:
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(str),
+        )
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+            cls,
+            core_schema: CoreSchema,
+            handler: Callable[[CoreSchema], JsonSchemaValue]
+    ) -> JsonSchemaValue:
+        json_schema = handler(core_schema)
+        json_schema.update({
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_]+:[a-zA-Z0-9_]+$",
+            "examples": ["message:send", "room:create", "member:delete"]
+        })
+        return json_schema
 
 
 class RoomSettings(BaseModel):

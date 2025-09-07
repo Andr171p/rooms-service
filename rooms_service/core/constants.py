@@ -39,6 +39,8 @@ class RoomVisibility(StrEnum):
     """Видимость комнаты для других пользователей"""
     PRIVATE = "private"
     PUBLIC = "public"
+    DELETED = "deleted"
+    BANNED = "banned"
 
 
 class MemberStatus(StrEnum):
