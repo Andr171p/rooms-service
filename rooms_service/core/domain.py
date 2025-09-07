@@ -3,11 +3,18 @@ from typing import Any, Self
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from pydantic import AnyUrl, BaseModel, Field, field_validator, model_validator
+from pydantic import AnyUrl, BaseModel, Field, computed_field, model_validator
 
-from .constants import HIGHEST_PRIORITY, PERMISSION_CODE_PARTS
-from .enums import InviteStatus, MemberStatus, RoleType, RoomType, RoomVisibility
-from .utils import current_datetime
+from .constants import (
+    HIGHEST_PRIORITY,
+    InvitationStatus,
+    MemberStatus,
+    RoleType,
+    RoomType,
+    RoomVisibility,
+)
+from .utils import configure_default_room_settings, current_datetime
+from .value_objects import PermissionCode, RoomSettings
 
 
 class Room(BaseModel):
@@ -31,6 +38,11 @@ class Room(BaseModel):
     slug: str | None = None
     visibility: RoomVisibility = RoomVisibility.PUBLIC
     created_at: datetime = Field(default_factory=current_datetime)
+
+    @computed_field(description="Настройки комнаты")
+    @property
+    def settings(self) -> RoomSettings:
+        return configure_default_room_settings(self.type, self.visibility)
 
     @model_validator(mode="before")
     @classmethod
@@ -85,14 +97,8 @@ class Permission(BaseModel):
         category: Ресурс к которому выдаётся привилегия.
     """
     id: UUID = Field(default_factory=uuid4)
-    code: str
+    code: PermissionCode
     category: str
-
-    @field_validator("code", mode="before")
-    def validate_code(cls, code: str) -> str:
-        if len(code.split(":")) != PERMISSION_CODE_PARTS:
-            raise ValueError("Invalid permission code!")
-        return code
 
 
 class RolePermission(BaseModel):
@@ -105,12 +111,8 @@ class RolePermission(BaseModel):
     created_at: datetime
 
 
-class Channel(Room):
-    description: str
-
-
-class Invite(BaseModel):
-    """Приглашение для пользователя
+class Invitation(BaseModel):
+    """Приглашение для пользователя на вступление в комнату
 
     Attributes:
         id: Уникальный идентификатор приглашения.
@@ -127,6 +129,6 @@ class Invite(BaseModel):
     inviter_id: UUID
     invitee_id: UUID
     token: str
-    status: InviteStatus = InviteStatus.PENDING
+    status: InvitationStatus = InvitationStatus.PENDING
     expires_at: datetime
     created_at: datetime = Field(default_factory=current_datetime)
