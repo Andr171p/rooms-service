@@ -7,7 +7,8 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..core.domain import Room
+from ..core.base import CRUDRepository, MemberRepository, SchemaT
+from ..core.domain import Member, Room
 from ..core.exceptions import (
     ConflictError,
     CreationError,
@@ -16,13 +17,13 @@ from ..core.exceptions import (
     UpdateError,
 )
 from .base import Base
-from .models import RoomModel
+from .models import MemberModel, RoomModel
 
 ModelT = TypeVar("ModelT", bound=Base)
-SchemaT = TypeVar("SchemaT", bound=BaseModel)
+# SchemaT = TypeVar("SchemaT", bound=BaseModel)  # noqa: ERA001
 
 
-class CRUDRepository[ModelT: Base, SchemaT: BaseModel]:
+class SQLCRUDRepository[ModelT: Base, SchemaT: BaseModel]:
     model: type[ModelT]
     schema: type[SchemaT]
 
@@ -92,7 +93,7 @@ class CRUDRepository[ModelT: Base, SchemaT: BaseModel]:
             return result.rowcount > 0
 
 
-class RoomRepository(CRUDRepository[RoomModel, Room]):
+class SQLRoomRepository(SQLCRUDRepository[RoomModel, Room], CRUDRepository[Room]):
     model = RoomModel
     schema = Room
 
@@ -109,3 +110,8 @@ class RoomRepository(CRUDRepository[RoomModel, Room]):
         except SQLAlchemyError as e:
             await self.session.rollback()
             raise CreationError(f"Error while creation: {e}") from e
+
+
+class SQLMemberRepository(SQLCRUDRepository[MemberModel, Member], MemberRepository):
+    model = MemberModel
+    schema = Member

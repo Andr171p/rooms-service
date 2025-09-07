@@ -31,6 +31,13 @@ ALLOWED_MEDIA_FORMATS: list[str] = [
 ]
 
 
+class EventStatus(StrEnum):
+    """Статусы жизненного цикла события"""
+    NEW = "new"
+    DONE = "done"
+    FAILED = "failed"
+
+
 class RoomType(StrEnum):
     """Тип комнаты (чата)"""
     DIRECT = "direct"    # Личный чат one to one

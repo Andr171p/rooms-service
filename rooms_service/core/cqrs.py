@@ -1,7 +1,5 @@
 from uuid import UUID
 
-from pydantic import BaseModel
-
 from .base import Command
 from .constants import RoomType, RoomVisibility
 from .value_objects import Name, Slug
@@ -14,3 +12,4 @@ class CreateRoomCommand(Command):
     slug: Slug
     type: RoomType
     visibility: RoomVisibility
+    initial_members: list[UUID]

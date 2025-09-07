@@ -18,8 +18,24 @@ class SSOSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SSO_")
 
 
+class PostgresSettings(BaseSettings):
+    host: str = "localhost"
+    port: int = 5432
+    user: str = "postgres"
+    password: str = "password"
+    db: str = "postgres"
+    driver: str = "asyncpg"
+
+    model_config = SettingsConfigDict(env_prefix="POSTGRES_")
+
+    @property
+    def sqlalchemy_url(self) -> str:
+        return f"postgresql+{self.driver}://{self.user}:{self.password}@{self.host}:{self.port}/{self.db}"
+
+
 class Settings(BaseSettings):
     sso: SSOSettings = SSOSettings()
+    postgres: PostgresSettings = PostgresSettings()
 
 
 settings: Final[Settings] = Settings()
