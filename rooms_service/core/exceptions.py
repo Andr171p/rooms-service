@@ -10,8 +10,8 @@ class CreationError(_RepositoryError):
     """Ошибка при создании ресурса"""
 
 
-class AlreadyExistsError(_RepositoryError):
-    """Ресурс уже создан"""
+class ConflictError(_RepositoryError):
+    """Конфликт при создании ресурса"""
 
 
 class ReadingError(_RepositoryError):

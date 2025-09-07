@@ -6,7 +6,6 @@ from collections import UserString
 from collections.abc import Callable
 
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
 
 from .constants import (
@@ -16,10 +15,12 @@ from .constants import (
     MAX_ADMINS,
     MAX_MEDIA_SIZE,
     MAX_MEMBERS,
+    MAX_NAME_LENGTH,
     MAX_PINNED_MESSAGES,
     MIN_ADMINS,
     MIN_MEDIA_SIZE,
     MIN_MEMBERS,
+    MIN_NAME_LENGTH,
     MIN_PINNED_MESSAGES,
     PERMISSION_CODE_PARTS,
     UNLIMITED_MEDIA_FORMATS,
@@ -28,23 +29,13 @@ from .constants import (
 )
 
 
-class PermissionCode(UserString):
-    """Строка для валидации кода привилегий."""
-    def __init__(self, seq: str):
+class _StrPrimitiveValidator(UserString):
+    def __init__(self, seq: str) -> None:
         super().__init__(seq)
         self.data = self.validate(self.data)
 
     @classmethod
-    def validate(cls, code: str) -> str:
-        if ":" not in code:
-            raise ValueError(
-                """Permission code must contains ':'!
-                For example: 'message:send', 'room:create', 'member:delete
-                """
-            )
-        if len(code.split(":")) != PERMISSION_CODE_PARTS:
-            raise ValueError("Invalid permission code!")
-        return code
+    def validate(cls, value: str) -> str: pass
 
     @classmethod
     def __get_pydantic_core_schema__(
@@ -58,19 +49,41 @@ class PermissionCode(UserString):
             serialization=core_schema.plain_serializer_function_ser_schema(str),
         )
 
+
+class PermissionCode(_StrPrimitiveValidator):
+    """Строка для валидации кода привилегий."""
+
     @classmethod
-    def __get_pydantic_json_schema__(
-            cls,
-            core_schema: CoreSchema,
-            handler: Callable[[CoreSchema], JsonSchemaValue]
-    ) -> JsonSchemaValue:
-        json_schema = handler(core_schema)
-        json_schema.update({
-            "type": "string",
-            "pattern": "^[a-zA-Z0-9_]+:[a-zA-Z0-9_]+$",
-            "examples": ["message:send", "room:create", "member:delete"]
-        })
-        return json_schema
+    def validate(cls, code: str) -> str:
+        if ":" not in code:
+            raise ValueError(
+                """Permission code must contains ':'!
+                For example: 'message:send', 'room:create', 'member:delete
+                """
+            )
+        if len(code.split(":")) != PERMISSION_CODE_PARTS:
+            raise ValueError("Invalid permission code!")
+        return code
+
+
+class Name(_StrPrimitiveValidator):
+    """Строка для валидации имени сущности"""
+
+    @classmethod
+    def validate(cls, name: str) -> str:
+        if not (MIN_NAME_LENGTH <= len(name) <= MAX_NAME_LENGTH):
+            raise ValueError("Name length must be between 1 and 100 characters!")
+        return name
+
+
+class Slug(_StrPrimitiveValidator):
+    """Строка для валидации псевдонима сущности"""
+
+    @classmethod
+    def validate(cls, slug: str) -> str:
+        if not (MIN_NAME_LENGTH <= len(slug) <= MAX_NAME_LENGTH):
+            raise ValueError("Name length must be between 1 and 100 characters!")
+        return slug.lower()
 
 
 class RoomSettings(BaseModel):

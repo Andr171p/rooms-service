@@ -3,7 +3,7 @@ from typing import Self
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, computed_field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from .constants import (
     HIGHEST_PRIORITY,
@@ -14,7 +14,7 @@ from .constants import (
     RoomVisibility,
 )
 from .utils import configure_default_room_settings, current_datetime
-from .value_objects import PermissionCode, RoomSettings
+from .value_objects import Name, PermissionCode, RoomSettings, Slug
 
 
 class Room(BaseModel):
@@ -34,10 +34,12 @@ class Room(BaseModel):
     created_by: UUID
     type: RoomType
     avatar_url: str | None = None
-    name: str | None = None
-    slug: str | None = None
+    name: Name | None = None
+    slug: Slug | None = None
     visibility: RoomVisibility = RoomVisibility.PUBLIC
     created_at: datetime = Field(default_factory=current_datetime)
+
+    model_config = ConfigDict(from_attributes=True)
 
     @computed_field(description="Настройки комнаты")
     @property
@@ -69,6 +71,8 @@ class Member(BaseModel):
     status: MemberStatus = MemberStatus.ACTIVE
     joined_at: datetime = Field(default_factory=current_datetime)
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class Role(BaseModel):
     """Роль участника внутри комнаты
@@ -82,7 +86,7 @@ class Role(BaseModel):
     """
     id: UUID = Field(default_factory=uuid4)
     type: RoleType
-    name: str
+    name: Name
     description: str | None = None
     priority: int = Field(..., ge=HIGHEST_PRIORITY)
 

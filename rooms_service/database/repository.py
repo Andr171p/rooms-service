@@ -7,14 +7,16 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..core.domain import Room
 from ..core.exceptions import (
-    AlreadyExistsError,
+    ConflictError,
     CreationError,
     DeletionError,
     ReadingError,
     UpdateError,
 )
 from .base import Base
+from .models import RoomModel
 
 ModelT = TypeVar("ModelT", bound=Base)
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
@@ -36,7 +38,7 @@ class CRUDRepository[ModelT: Base, SchemaT: BaseModel]:
             return self.schema.model_validate(created_model)
         except IntegrityError as e:
             await self.session.rollback()
-            raise AlreadyExistsError(f"Already created error: {e}") from e
+            raise ConflictError(f"Data conflict error: {e}") from e
         except SQLAlchemyError as e:
             await self.session.rollback()
             raise CreationError(f"Error while creation: {e}") from e
@@ -88,3 +90,22 @@ class CRUDRepository[ModelT: Base, SchemaT: BaseModel]:
             raise DeletionError(f"Error while deletion: {e}") from e
         else:
             return result.rowcount > 0
+
+
+class RoomRepository(CRUDRepository[RoomModel, Room]):
+    model = RoomModel
+    schema = Room
+
+    async def create(self, room: Room) -> Room:
+        try:
+            model = RoomModel(**room.model_dump())
+            self.session.add(model)
+            await self.session.commit()
+            await self.session.refresh(model, ["settings"])
+            return Room.model_validate(model)
+        except IntegrityError as e:
+            await self.session.rollback()
+            raise ConflictError(f"Data conflict error: {e}") from e
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            raise CreationError(f"Error while creation: {e}") from e

@@ -1,5 +1,8 @@
 from enum import StrEnum
 
+# Параметры для валидации имён
+MIN_NAME_LENGTH = 1
+MAX_NAME_LENGTH = 100
 # Самый высокий приоритет роли
 HIGHEST_PRIORITY = 1
 # Количество частей в коде привилегий

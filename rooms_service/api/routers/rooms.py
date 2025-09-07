@@ -3,8 +3,9 @@ from dishka.integrations.fastapi import FromDishka as Depends
 from fastapi import APIRouter, status
 from fastauth import CurrentUser
 
+from ...core.cqrs import CreateRoomCommand
 from ...core.domain import Room
-from ..schemas import RoomCreateSchema
+from ...handlers import CreateRoomCommandHandler
 
 rooms_router = APIRouter(prefix="/rooms", tags=["Rooms"], route_class=DishkaRoute)
 
@@ -15,5 +16,9 @@ rooms_router = APIRouter(prefix="/rooms", tags=["Rooms"], route_class=DishkaRout
     response_model=Room,
     summary="Создание комнаты",
 )
-async def create_room(room_create: RoomCreateSchema, current_user: CurrentUser) -> ...:
-    ...
+async def create_room(
+        command: CreateRoomCommand,
+        current_user: CurrentUser,
+        handler: Depends[CreateRoomCommandHandler]
+) -> Room:
+    return await handler.handle(command, creator_by=current_user.x_user_id)
