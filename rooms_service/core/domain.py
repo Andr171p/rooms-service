@@ -101,14 +101,12 @@ class Permission(BaseModel):
     category: str
 
 
-class RolePermission(BaseModel):
+class MemberPermission(BaseModel):
     """Маппинг ролей и прав"""
     id: UUID = Field(default_factory=uuid4)
-    room_id: UUID
-    role_id: UUID
+    member_id: UUID
     permission_id: UUID
-    granted_by: UUID  # Кому выданы права
-    created_at: datetime
+    granted: bool
 
 
 class Invitation(BaseModel):
