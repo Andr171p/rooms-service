@@ -41,8 +41,8 @@ class Room(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @computed_field(description="Настройки комнаты")
     @property
+    @computed_field(description="Настройки комнаты")
     def settings(self) -> RoomSettings:
         return configure_default_room_settings(self.type, self.visibility)
 

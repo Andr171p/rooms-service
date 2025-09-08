@@ -3,7 +3,7 @@ from dishka.integrations.fastapi import FromDishka as Depends
 from fastapi import APIRouter, status
 from fastauth import CurrentUser
 
-from ...core.cqrs import CreateRoomCommand
+from ...core.commands import CreateRoomCommand
 from ...core.domain import Room
 from ...handlers import CreateRoomCommandHandler
 
@@ -21,4 +21,4 @@ async def create_room(
         current_user: CurrentUser,
         handler: Depends[CreateRoomCommandHandler]
 ) -> Room:
-    return await handler.handle(command, creator_by=current_user.x_user_id)
+    return await handler.handle(command, created_by=current_user.x_user_id)

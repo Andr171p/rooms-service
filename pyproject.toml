@@ -12,6 +12,7 @@ dependencies = [
     "redis>=6.4.0",
     "ruff>=0.12.11",
     "sqlalchemy>=2.0.43",
+    "types-pytz>=2025.2.0.20250809",
 ]
 
 [tool.ruff]

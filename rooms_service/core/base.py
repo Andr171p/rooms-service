@@ -1,11 +1,12 @@
 from typing import Protocol, Self, TypeVar
 
 from abc import ABC, abstractmethod
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 from pydantic import BaseModel
 
-from .domain import Member, Room
+from .domain import Member, Permission, Role, Room
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
@@ -23,13 +24,16 @@ class CommandHandler[ResultT: BaseModel](ABC):
     async def handle(self, command: Command, **kwargs) -> ResultT: pass
 
 
-class CRUDRepository[SchemaT: BaseModel](Protocol):
+class CRUDRepository(Protocol[SchemaT]):
+    @abstractmethod
     async def create(self, schema: SchemaT) -> SchemaT:
         """Создаёт ресурс и возвращает его"""
 
+    @abstractmethod
     async def read(self, id: UUID) -> SchemaT | None:  # noqa: A002
         """Получает ресурс по его уникальному идентификатору"""
 
+    @abstractmethod
     async def update(self, id: UUID, **kwargs) -> SchemaT | None:  # noqa: A002
         """Обновляет ресурс"""
 
@@ -37,19 +41,43 @@ class CRUDRepository[SchemaT: BaseModel](Protocol):
         """Удаляет ресурс"""
 
 
+class RoomRepository(CRUDRepository[Room]):
+    @abstractmethod
+    async def get_members(self, id: UUID, page: int, limit: int) -> list[Member]:  # noqa: A002
+        """Получает всех участников комнаты"""
+
+
 class MemberRepository(CRUDRepository[Member]):
-    async def bulk_create(self, members: list[Member]) -> list[Member]:
+    @abstractmethod
+    async def bulk_create(self, members: list[Member]) -> None:
         """Создаёт за одну операцию множество ресурсов"""
 
 
-class UnitOfWork(ABC):
-    """Реализация Unit Of Work паттерна для атомарности согласованности данных"""
+class RoleRepository(CRUDRepository[Role]):
+    @abstractmethod
+    async def get_by_name(self, name: str) -> Role | None:
+        """Получает роль по её названию"""
 
-    room_repository: type[CRUDRepository[Room]]
-    member_repository: type[MemberRepository]
+    @abstractmethod
+    async def get_permissions(self, role_id: UUID) -> list[Permission]:
+        """Получает права выданные для роли в рамках комнаты"""
+
+
+class UnitOfWork(ABC):
+    """Абстрактный класс для реализации Unit Of Work паттерна
+    для атомарности согласованности данных
+    """
+
+    room_repository: RoomRepository
+    member_repository: MemberRepository
+    role_repository: RoleRepository
 
     @abstractmethod
     async def __aenter__(self) -> Self: pass
+
+    @abstractmethod
+    @asynccontextmanager
+    async def transaction(self) -> Self: pass
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         if exc_type is None:

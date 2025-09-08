@@ -7,8 +7,8 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..core.base import CRUDRepository, MemberRepository, SchemaT
-from ..core.domain import Member, Room
+from ..core.base import MemberRepository, RoleRepository, RoomRepository
+from ..core.domain import Member, Permission, Role, Room
 from ..core.exceptions import (
     ConflictError,
     CreationError,
@@ -17,10 +17,10 @@ from ..core.exceptions import (
     UpdateError,
 )
 from .base import Base
-from .models import MemberModel, RoomModel
+from .models import MemberModel, PermissionModel, RoleModel, RolePermissionModel, RoomModel
 
 ModelT = TypeVar("ModelT", bound=Base)
-# SchemaT = TypeVar("SchemaT", bound=BaseModel)  # noqa: ERA001
+SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
 
 class SQLCRUDRepository[ModelT: Base, SchemaT: BaseModel]:
@@ -93,7 +93,7 @@ class SQLCRUDRepository[ModelT: Base, SchemaT: BaseModel]:
             return result.rowcount > 0
 
 
-class SQLRoomRepository(SQLCRUDRepository[RoomModel, Room], CRUDRepository[Room]):
+class SQLRoomRepository(SQLCRUDRepository[RoomModel, Room], RoomRepository):
     model = RoomModel
     schema = Room
 
@@ -111,7 +111,62 @@ class SQLRoomRepository(SQLCRUDRepository[RoomModel, Room], CRUDRepository[Room]
             await self.session.rollback()
             raise CreationError(f"Error while creation: {e}") from e
 
+    async def get_members(self, id: UUID, page: int, limit: int) -> list[Member]:  # noqa: A002
+        try:
+            offset = (page - 1) * limit
+            stmt = (
+                select(MemberRepository)
+                .where(MemberModel.room_id == id)
+                .offset(offset)
+                .limit(limit)
+            )
+            results = await self.session.execute(stmt)
+            models = results.scalars().all()
+            return [Member.model_validate(model) for model in models]
+        except SQLAlchemyError as e:
+            raise ReadingError(f"Error while reading: {e}") from e
+
 
 class SQLMemberRepository(SQLCRUDRepository[MemberModel, Member], MemberRepository):
     model = MemberModel
     schema = Member
+
+    async def bulk_create(self, members: list[Member]) -> None:
+        try:
+            values = [member.model_dump() for member in members]
+            stmt = insert(self.model).values(**values)
+            await self.session.execute(stmt)
+        except IntegrityError as e:
+            raise ConflictError(f"Data conflict error: {e}") from e
+        except SQLAlchemyError as e:
+            raise CreationError(f"Error while creation: {e}") from e
+
+
+class SQLRoleRepository(SQLCRUDRepository[RoleModel, Role], RoleRepository):
+    model = RoleModel
+    schema = Role
+
+    async def get_by_name(self, name: str) -> Role | None:
+        try:
+            stmt = select(self.model).where(self.model.name == name)
+            result = await self.session.execute(stmt)
+            model = result.scalar_one_or_none()
+            return self.schema.model_validate(model) if model else None
+        except SQLAlchemyError as e:
+            raise ReadingError(f"Error while reading: {e}") from e
+
+    async def get_permissions(self, role_id: UUID) -> list[Permission]:
+        try:
+            stmt = (
+                select(PermissionModel)
+                .join(
+                    RolePermissionModel,
+                    RolePermissionModel.permission_id == PermissionModel.id,
+                )
+                .where(RolePermissionModel.role_id == role_id)
+            )
+            result = await self.session.execute(stmt)
+            models = result.scalars().all()
+            return [Permission.model_validate(model) for model in models]
+        except SQLAlchemyError as e:
+            raise ReadingError(f"Error while reading: {e}") from e

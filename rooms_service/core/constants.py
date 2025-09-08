@@ -107,3 +107,9 @@ TYPE_TO_MAX_MEMBERS_MAP: dict[RoomType, int] = {
     RoomType.CHANNEL: DEFAULT_CHANNEL_MEMBERS,
     RoomType.GROUP: DEFAULT_GROUP_MEMBERS,
 }
+# Дефолтная роль пользователя в зависимости от типа комнаты
+TYPE_TO_SYSTEM_ROLE_MAP: dict[RoomType, SystemRole] = {
+    RoomType.DIRECT: SystemRole.MEMBER,
+    RoomType.GROUP: SystemRole.MEMBER,
+    RoomType.CHANNEL: SystemRole.GUEST,
+}

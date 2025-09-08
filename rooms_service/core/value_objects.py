@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from abc import abstractmethod
 from collections import UserString
 from collections.abc import Callable
 
@@ -34,6 +35,7 @@ class _StrPrimitiveValidator(UserString):
         super().__init__(seq)
         self.data = self.validate(self.data)
 
+    @abstractmethod
     @classmethod
     def validate(cls, value: str) -> str: pass
 
