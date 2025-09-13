@@ -4,9 +4,11 @@ from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveInt
 
+from .constants import EventStatus
 from .domain import Member, Permission, Role, Room
+from .events import OutboxEvent
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
@@ -20,6 +22,10 @@ class Query(ABC, BaseModel):
 
 
 class CommandHandler[ResultT: BaseModel](ABC):
+    """Абстрактный обработчик команд для CQRS паттерна.
+    Параметр ResultT указывает возвращаемый объект после обработки команды.
+    """
+
     @abstractmethod
     async def handle(self, command: Command, **kwargs) -> ResultT: pass
 
@@ -34,6 +40,10 @@ class CRUDRepository(Protocol[SchemaT]):
         """Получает ресурс по его уникальному идентификатору"""
 
     @abstractmethod
+    async def read_all(self, limit: PositiveInt, page: PositiveInt) -> list[SchemaT]:
+        """Выполняет пагинацию ресурса"""
+
+    @abstractmethod
     async def update(self, id: UUID, **kwargs) -> SchemaT | None:  # noqa: A002
         """Обновляет ресурс"""
 
@@ -43,7 +53,9 @@ class CRUDRepository(Protocol[SchemaT]):
 
 class RoomRepository(CRUDRepository[Room]):
     @abstractmethod
-    async def get_members(self, id: UUID, page: int, limit: int) -> list[Member]:  # noqa: A002
+    async def get_members(
+            self, id: UUID, page: PositiveInt, limit: PositiveInt  # noqa: A002
+    ) -> list[Member]:
         """Получает всех участников комнаты"""
 
 
@@ -63,6 +75,14 @@ class RoleRepository(CRUDRepository[Role]):
         """Получает права выданные для роли в рамках комнаты"""
 
 
+class OutboxRepository(CRUDRepository[OutboxEvent]):
+    @abstractmethod
+    async def get_by_status(
+            self, status: EventStatus, limit: PositiveInt, page: PositiveInt
+    ) -> list[OutboxEvent]:
+        """Получает события по заданному статусу"""
+
+
 class UnitOfWork(ABC):
     """Абстрактный класс для реализации Unit Of Work паттерна
     для атомарности согласованности данных
@@ -71,6 +91,7 @@ class UnitOfWork(ABC):
     room_repository: RoomRepository
     member_repository: MemberRepository
     role_repository: RoleRepository
+    outbox_repository: OutboxRepository
 
     @abstractmethod
     async def __aenter__(self) -> Self: pass

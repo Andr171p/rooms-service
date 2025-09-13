@@ -2,9 +2,11 @@ from .core.base import CommandHandler, UnitOfWork
 from .core.commands import CreateRoomCommand
 from .core.constants import TYPE_TO_SYSTEM_ROLE_MAP
 from .core.domain import Member, Room
+from .core.events import RoomCreatedEvent
 
 
 class CreateRoomCommandHandler(CommandHandler[Room]):
+    """Обработчик команды создания комнаты"""
     def __init__(self, uow: UnitOfWork) -> None:
         self.uow = uow
 
@@ -34,5 +36,10 @@ class CreateRoomCommandHandler(CommandHandler[Room]):
             ]
             members.append(owner)
             await uow.member_repository.bulk_create(members)
+            await uow.outbox_repository.create(
+                RoomCreatedEvent.model_validate({
+                    **created_room.model_dump(), "initial_members": command.initial_members
+                })
+            )
             await uow.commit()
         return created_room

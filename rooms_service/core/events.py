@@ -1,15 +1,56 @@
+from typing import Any
+
+import time
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, NonNegativeInt, computed_field
 
-from .constants import EventStatus
+from .constants import EventStatus, RoomType, RoomVisibility
 from .utils import current_datetime
+from .value_objects import Name, RoomSettings, Slug
 
 
 class Event(BaseModel):
-    """Базовая модель события"""
-    id: UUID = Field(default_factory=uuid4)
-    type: str
-    status: EventStatus
+    """Базовая модель события
+
+    Attributes:
+        event_id: Уникальный идентификатор события.
+        event_type: Тип события, например: send_message, create_room, ...
+        event_status: Текущий статус события.
+        created_at: Время создания события.
+    """
+    event_id: UUID = Field(default_factory=uuid4)
+    event_type: str
+    event_status: EventStatus = EventStatus.NEW
     created_at: datetime = Field(default_factory=current_datetime)
+
+
+class OutboxEvent(Event):
+    """Модель события для реализации Outbox паттерна"""
+    aggregate_id: UUID
+    aggregate_type: str
+    payload: dict[str, Any]
+    retries: NonNegativeInt
+
+    @computed_field(description="Предотвращение обработки дубликатов события")
+    def dedup_key(self) -> str:
+        return f"{time.time()}-{self.aggregate_type}-{self.aggregate_id}"
+
+    @computed_field(description="Гарантия порядка обработки события для одного агрегата")
+    def partition_key(self) -> str:
+        return f"{self.aggregate_type}-{self.aggregate_id}"
+
+
+class RoomCreatedEvent(Event):
+    """Комната создана"""
+    event_type = "room_created"
+
+    id: UUID
+    name: Name
+    type: RoomType
+    slug: Slug
+    created_by: UUID
+    visibility: RoomVisibility
+    settings: RoomSettings
+    initial_members: list[UUID]

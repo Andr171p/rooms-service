@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.base import CRUDRepository, UnitOfWork
+from .outbox import SQLOutboxRepository
 from .repository import SQLMemberRepository, SQLRoomRepository
 
 
@@ -28,6 +29,7 @@ class SQLRepositoryDescriptor:
 class SQLUnitOfWork(UnitOfWork):
     room_repository = SQLRepositoryDescriptor(SQLRoomRepository)
     member_repository = SQLRepositoryDescriptor(SQLMemberRepository)
+    outbox_repository = SQLRepositoryDescriptor(SQLOutboxRepository)
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session

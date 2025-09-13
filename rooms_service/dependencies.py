@@ -21,12 +21,7 @@ class AppProvider(Provider):
             self, sessionmaker: async_sessionmaker[AsyncSession]
     ) -> AsyncIterator[AsyncSession]:
         async with sessionmaker() as session:
-            try:
-                yield session
-                await session.commit()
-            except Exception as e:
-                await session.rollback()
-                raise e
+            yield session
 
 
 container: Final[AsyncContainer] = make_async_container(
