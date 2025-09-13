@@ -1,8 +1,10 @@
+from uuid import UUID
+
 from .core.base import CommandHandler, UnitOfWork
 from .core.commands import CreateRoomCommand
 from .core.constants import TYPE_TO_SYSTEM_ROLE_MAP
 from .core.domain import Member, Room
-from .core.events import RoomCreatedEvent
+from .core.events import OutboxEvent, RoomCreatedEvent
 
 
 class CreateRoomCommandHandler(CommandHandler[Room]):
@@ -36,10 +38,20 @@ class CreateRoomCommandHandler(CommandHandler[Room]):
             ]
             members.append(owner)
             await uow.member_repository.bulk_create(members)
-            await uow.outbox_repository.create(
-                RoomCreatedEvent.model_validate({
-                    **created_room.model_dump(), "initial_members": command.initial_members
-                })
-            )
+            outbox_event = self._prepare_outbox_event(created_room, command.initial_members)
+            await uow.outbox_repository.create(outbox_event)
             await uow.commit()
         return created_room
+
+    @staticmethod
+    def _prepare_outbox_event(created_room: Room, initial_members: list[UUID]) -> OutboxEvent:
+        event = RoomCreatedEvent.model_validate({
+            **created_room.model_dump(), "initial_members": initial_members
+        })
+        return OutboxEvent(
+            aggregate_id=created_room.id,
+            aggregate_type=created_room.__class__.__name__,
+            event_type=event.event_type,
+            payload=event.model_dump(),
+            event_status=event.event_status,
+        )

@@ -1,6 +1,7 @@
-from typing import Protocol, Self, TypeVar
+from typing import Any, Protocol, Self, TypeVar
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping, Sequence
 from contextlib import asynccontextmanager
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from pydantic import BaseModel, PositiveInt
 from .constants import EventStatus
 from .domain import Member, Permission, Role, Room
 from .events import OutboxEvent
+from .value_objects import MessagePayload
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
@@ -77,10 +79,24 @@ class RoleRepository(CRUDRepository[Role]):
 
 class OutboxRepository(CRUDRepository[OutboxEvent]):
     @abstractmethod
+    async def get_count_by_status(self, event_statuses: Sequence[EventStatus]) -> int:
+        """Получает количество outbox событий с заданным статусом"""
+
+    @abstractmethod
     async def get_by_status(
-            self, status: EventStatus, limit: PositiveInt, page: PositiveInt
+            self, event_statuses: Sequence[EventStatus], limit: PositiveInt, page: PositiveInt
     ) -> list[OutboxEvent]:
         """Получает события по заданному статусу"""
+
+    @abstractmethod
+    async def bulk_update(self, ids: list[UUID], *args: list[Mapping[str, Any]]) -> None:
+        """Выполняет обновление N количества ресурсов за раз"""
+
+    @abstractmethod
+    async def bulk_delete(self, ids: list[UUID]) -> None:
+        """Удаляет N outbox ивентов за один раз.
+        Данный метод самостоятельно делает commit изменений без помощи UnitOfWork.
+        """
 
 
 class UnitOfWork(ABC):
@@ -111,3 +127,8 @@ class UnitOfWork(ABC):
 
     @abstractmethod
     async def rollback(self) -> None: pass
+
+
+class Publisher(Protocol):
+    async def publish(self, message: MessagePayload, **kwargs) -> None:
+        """Публикует событие"""

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from abc import abstractmethod
 from collections import UserString
 from collections.abc import Callable
 
@@ -29,13 +28,14 @@ from .constants import (
     MediaType,
 )
 
+MessagePayload = str | dict[str, Any] | BaseModel | list[BaseModel] | list[dict[str, Any]]
+
 
 class _StrPrimitiveValidator(UserString):
     def __init__(self, seq: str) -> None:
         super().__init__(seq)
         self.data = self.validate(self.data)
 
-    @abstractmethod
     @classmethod
     def validate(cls, value: str) -> str: pass
 

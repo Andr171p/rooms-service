@@ -1,16 +1,10 @@
-from uuid import uuid4
+from rooms_service.core.utils import total_pages
 
-from rooms_service.core.constants import RoomType
-from rooms_service.core.domain import Room
-from rooms_service.core.value_objects import Name
-
-room = Room(
-    created_by=uuid4(),
-    type=RoomType.CHANNEL,
-    name="ВШЦТ",
-)
-
-print(room)
+print(total_pages(103, 4))
 
 
-print(Name(101 * "a"))
+from faststream.kafka import KafkaBroker
+
+broker = KafkaBroker()
+
+broker.publish()

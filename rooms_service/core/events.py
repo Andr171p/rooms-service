@@ -31,7 +31,7 @@ class OutboxEvent(Event):
     aggregate_id: UUID
     aggregate_type: str
     payload: dict[str, Any]
-    retries: NonNegativeInt
+    retries: NonNegativeInt = Field(default=0)
 
     @computed_field(description="Предотвращение обработки дубликатов события")
     def dedup_key(self) -> str:
