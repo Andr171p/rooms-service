@@ -76,7 +76,7 @@ def configure_default_room_settings(
     )
 
 
-def total_pages(total_count: NonNegativeInt, limit: PositiveInt) -> int:
+def calculate_total_pages(total_count: NonNegativeInt, limit: PositiveInt) -> int:
     """Рассчитывает общее количество страниц по общему количеству и лимиту
 
     :param total_count: Общее количество.

@@ -6,7 +6,7 @@ from faststream.exceptions import FastStreamException
 
 from .core.base import OutboxRepository, Publisher
 from .core.constants import EventStatus
-from .core.utils import schedule, total_pages
+from .core.utils import calculate_total_pages, schedule
 
 # Задержка в секундах между операциями outbox процессора
 OUTBOX_PROCESSOR_SLEEP = 5
@@ -33,7 +33,7 @@ class OutboxProcessor:
     @schedule(timedelta(seconds=OUTBOX_PROCESSOR_SLEEP))
     async def process(self) -> None:
         count = await self.repository.get_count_by_status(OUTBOX_PROCESSOR_STATUSES)
-        pages = total_pages(count, OUTBOX_PROCESSOR_BATCH_SIZE)
+        pages = calculate_total_pages(count, OUTBOX_PROCESSOR_BATCH_SIZE)
         if pages == 0:
             return
         for page in range(1, pages + 1):
@@ -60,7 +60,7 @@ class OutboxCleaner:
     @schedule(timedelta(seconds=OUTBOX_CLEANUP_SLEEP))
     async def cleanup(self) -> None:
         count = await self.repository.get_count_by_status(OUTBOX_CLEANUP_STATUSES)
-        pages = total_pages(count, OUTBOX_PROCESSOR_BATCH_SIZE)
+        pages = calculate_total_pages(count, OUTBOX_PROCESSOR_BATCH_SIZE)
         if pages == 0:
             return
         for page in range(1, pages + 1):
