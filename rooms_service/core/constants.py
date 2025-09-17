@@ -31,10 +31,6 @@ ALLOWED_MEDIA_FORMATS: list[str] = [
 ]
 # Максимальное количество повторных обработок для outbox процессора
 MAX_OUTBOX_RETRIES = 5
-# Задержка в секундах между операциями outbox процессора
-OUTBOX_PROCESSOR_SLEEP = 5
-# Количество обрабатываемых outbox событий за раз
-OUTBOX_PROCESSOR_BATCH_SIZE = 32
 
 
 class EventStatus(StrEnum):
@@ -43,10 +39,6 @@ class EventStatus(StrEnum):
     PENDING = "pending"
     DONE = "done"
     FAILED = "failed"
-
-
-# Статусы которые обрабатывает Outbox Processor
-OUTBOX_PROCESSOR_STATUSES: tuple[EventStatus, ...] = (EventStatus.NEW, EventStatus.PENDING)
 
 
 class RoomType(StrEnum):

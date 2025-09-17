@@ -32,8 +32,7 @@ def current_datetime() -> datetime:
 
 
 def schedule(interval: timedelta) -> Callable[[F], F]:
-    """Декоратор для периодического выполнения асинхронной функции
-    """
+    """Декоратор для периодического выполнения асинхронной функции"""
     def decorator(func: F) -> F:
         @wraps(func)
         async def wrapper(*args, **kwargs) -> Any:

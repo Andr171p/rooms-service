@@ -4,14 +4,14 @@ from collections.abc import Mapping, Sequence
 from uuid import UUID
 
 from pydantic import PositiveInt
-from sqlalchemy import Index, delete, func, select
+from sqlalchemy import Connection, Index, delete, event, func, select, update
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import Mapped, Mapper
 
 from ..core.base import OutboxRepository
-from ..core.constants import EventStatus
+from ..core.constants import MAX_OUTBOX_RETRIES, EventStatus
 from ..core.events import OutboxEvent
-from ..core.exceptions import DeletionError, ReadingError
+from ..core.exceptions import DeletionError, ReadingError, UpdateError
 from .base import Base, JsonDict, PostgresUUID
 from .repository import SQLCRUDRepository
 
@@ -19,7 +19,7 @@ from .repository import SQLCRUDRepository
 class OutboxEventModel(Base):
     __tablename__ = "outbox_events"
 
-    event_id: Mapped[PostgresUUID, UUID]
+    event_id: Mapped[PostgresUUID]
     aggregate_type: Mapped[str]
     aggregate_id: Mapped[PostgresUUID]
     event_type: Mapped[str]
@@ -32,6 +32,15 @@ class OutboxEventModel(Base):
     __table_args__ = (
         Index("outbox_index", "status", "aggregate_id", "dedup_key", "partition_key"),
     )
+
+
+@event.listens_for(OutboxEventModel, "after_update")
+def set_failed_status_after_update(
+        mapper: Mapper[Any], connection: Connection, target: OutboxEventModel  # noqa: ARG001
+) -> None:
+    """Обновляет статус outbox события исходя из количества повторных попыток"""
+    if target.retries >= MAX_OUTBOX_RETRIES and target.event_status != "failed":
+        target.event_status = "failed"
 
 
 class SQLOutboxRepository(SQLCRUDRepository[OutboxEventModel, OutboxEvent], OutboxRepository):
@@ -66,8 +75,24 @@ class SQLOutboxRepository(SQLCRUDRepository[OutboxEventModel, OutboxEvent], Outb
         except SQLAlchemyError as e:
             raise ReadingError(f"Error while reading data: {e}") from e
 
-    async def bulk_update(self, ids: list[UUID], *args: list[Mapping[str, Any]]) -> None:
-        pass
+    async def bulk_update(
+            self, ids: list[UUID], *args: list[Mapping[str, Any]], increase_retries: int = True
+    ) -> None:
+        if len(ids) != len(args):
+            raise ValueError("During a bulk update, the number of ids and args must be same!")
+        retries_counter = 1 if not increase_retries else 0
+        try:
+            for id, kwargs in zip(ids, args, strict=False):  # noqa: A001
+                stmt = (
+                    update(self.model)
+                    .where(self.model.event_id == id)
+                    .values(kwargs, retries=self.model.retries + retries_counter)
+                )
+                await self.session.execute(stmt)
+            await self.session.commit()
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            raise UpdateError(f"Error while bulk updating data: {e}") from e
 
     async def bulk_delete(self, ids: list[UUID]) -> None:
         try:

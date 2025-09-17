@@ -89,8 +89,10 @@ class OutboxRepository(CRUDRepository[OutboxEvent]):
         """Получает события по заданному статусу"""
 
     @abstractmethod
-    async def bulk_update(self, ids: list[UUID], *args: list[Mapping[str, Any]]) -> None:
-        """Выполняет обновление N количества ресурсов за раз"""
+    async def bulk_update(
+            self, ids: list[UUID], *args: list[Mapping[str, Any]], increase_retries: int = True
+    ) -> None:
+        """Выполняет массовое обновление ресурса и увеличивает счетчик повторных попыток"""
 
     @abstractmethod
     async def bulk_delete(self, ids: list[UUID]) -> None:
