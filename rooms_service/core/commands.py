@@ -3,9 +3,9 @@ from typing import Self
 from abc import ABC
 from uuid import UUID
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
-from .constants import RoomType, RoomVisibility
+from .constants import MAX_INITIAL_USERS, RoomType, RoomVisibility
 from .value_objects import Name, Slug
 
 
@@ -20,7 +20,7 @@ class CreateRoomCommand(Command):
     slug: Slug
     type: RoomType
     visibility: RoomVisibility
-    initial_users: list[UUID]
+    initial_users: list[UUID] = Field(max_length=MAX_INITIAL_USERS)
 
     @model_validator(mode="after")
     def validate_initial_users(self) -> Self:

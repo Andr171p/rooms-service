@@ -36,7 +36,7 @@ class CreateRoomCommandHandler(CommandHandler[Room]):
             ]
             initial_members.append(owner)
             await uow.member_repository.bulk_create(initial_members)
-            roles_permissions = uow.room_repository.get_roles_permissions(created_room.id)
+            roles_permissions = await uow.room_repository.get_roles_permissions(created_room.id)
             outbox_event = self._prepare_outbox_event(
                 created_room, initial_members, roles_permissions
             )

@@ -5,6 +5,8 @@ SOURCE = "rooms-service"
 # Параметры для валидации имён
 MIN_NAME_LENGTH = 1
 MAX_NAME_LENGTH = 100
+# Максимальное количество первичных участников комнаты
+MAX_INITIAL_USERS = 50
 # Самый высокий приоритет роли
 HIGHEST_PRIORITY = 1
 # Количество частей в коде привилегий
