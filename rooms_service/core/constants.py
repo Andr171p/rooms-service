@@ -31,6 +31,8 @@ ALLOWED_MEDIA_FORMATS: list[str] = [
 ]
 # Максимальное количество повторных обработок для outbox процессора
 MAX_OUTBOX_RETRIES = 5
+# Время жизни ресурса в кеше
+TTL = 3600
 
 
 class EventStatus(StrEnum):
