@@ -4,9 +4,10 @@ from uuid import UUID
 
 from faststream.exceptions import FastStreamException
 
-from .core.base import OutboxRepository, Publisher
+from .core.base import OutboxRepository, Publisher, UnitOfWork
 from .core.constants import EventStatus
 from .core.utils import calculate_total_pages, schedule
+from .core.value_objects import PermissionCode
 
 # Задержка в секундах между операциями outbox процессора
 OUTBOX_PROCESSOR_SLEEP = 5
@@ -71,3 +72,21 @@ class OutboxCleaner:
                 outbox_event.event_id for outbox_event in outbox_events
             ])
             logger.info("%s outbox events ware successfully cleaned", len(outbox_events))
+
+
+class PermissionService:
+    def __init__(self, uow: UnitOfWork) -> None:
+        self.uow = uow
+
+    async def has_permission(
+            self, room_id: UUID, user_id: UUID, permission_code: PermissionCode
+    ) -> bool:
+        """Проверяет наличие прав участника в конкретной комнате"""
+        async with self.uow:
+            member = await self.uow.member_repository.get_by_room_and_user(room_id, user_id)
+            if member is None:
+                return False
+            role_permissions = await self.uow.role_repository.get_permissions(member.role_id)
+            member_permissions = await self.uow.member_repository.get_permissions(member.id)
+        all_permissions = set(role_permissions).union(set(member_permissions))
+        return permission_code in all_permissions

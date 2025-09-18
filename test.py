@@ -1,10 +1,5 @@
-from rooms_service.core.utils import total_pages
-
-print(total_pages(103, 4))
+from rooms_service.core.utils import generate_correlation_id
 
 
-from faststream.kafka import KafkaBroker
-
-broker = KafkaBroker()
-
-broker.publish()
+for _ in range(5):
+    print(generate_correlation_id())

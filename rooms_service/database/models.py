@@ -55,6 +55,9 @@ class MemberModel(Base):
 
     room: Mapped["RoomModel"] = relationship(back_populates="members")
     role: Mapped["RoleModel"] = relationship(back_populates="members")
+    member_permissions: Mapped[list["MemberPermissionModel"]] = relationship(
+        back_populates="member", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (UniqueConstraint(
         "user_id", "room_id", name="unique_member"),

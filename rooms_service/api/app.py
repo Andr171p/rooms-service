@@ -1,7 +1,12 @@
+from collections.abc import AsyncIterator
+
 from fastapi import FastAPI
 from fastauth import AuthMiddleware
 
 from ..settings import settings
+
+
+async def lifespan(_: FastAPI) -> AsyncIterator[None]: ...
 
 
 def setup_middlewares(app: FastAPI) -> None:

@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.base import MemberRepository, RoleRepository, RoomRepository
-from ..core.domain import Member, Permission, Role, Room
+from ..core.domain import Member, Permission, Role, RolePermissions, Room
 from ..core.exceptions import (
     ConflictError,
     CreationError,
@@ -16,8 +16,17 @@ from ..core.exceptions import (
     ReadingError,
     UpdateError,
 )
+from ..core.value_objects import PermissionCode
 from .base import Base
-from .models import MemberModel, PermissionModel, RoleModel, RolePermissionModel, RoomModel
+from .models import (
+    MemberModel,
+    MemberPermissionModel,
+    PermissionModel,
+    RoleModel,
+    RolePermissionModel,
+    RoomModel,
+    RoomRoleModel,
+)
 
 ModelT = TypeVar("ModelT", bound=Base)
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
@@ -117,6 +126,31 @@ class SQLRoomRepository(SQLCRUDRepository[RoomModel, Room], RoomRepository):
         except SQLAlchemyError as e:
             raise ReadingError(f"Error while reading: {e}") from e
 
+    async def get_roles_permissions(self, id: UUID) -> list[RolePermissions]:  # noqa: A002
+        try:
+            stmt = (
+                select(RoleModel.id, PermissionModel.code)
+                .join(RoomRoleModel, RoomRoleModel.role_id == RoleModel.id)
+                .join(RolePermissionModel, RolePermissionModel.role_id == RoleModel.id)
+                .join(PermissionModel, RolePermissionModel.permission_id == PermissionModel.id)
+                .where(RoomRoleModel.room_id == id)
+                .order_by(PermissionModel.code)
+            )
+            results = await self.session.execute(stmt)
+            roles_permissions: dict[UUID, dict[str, UUID | list[PermissionCode]]] = {}
+            for role_id, permission_code in results.all():
+                if role_id not in roles_permissions:
+                    roles_permissions[role_id] = {
+                        "role_id": role_id, "permission_codes": []
+                    }
+                roles_permissions[role_id]["permission_codes"].append(permission_code)
+            return [
+                RolePermissions.model_validate(role_permissions)
+                for role_permissions in roles_permissions.values()
+            ]
+        except SQLAlchemyError as e:
+            raise ReadingError(f"Error while reading: {e}") from e
+
 
 class SQLMemberRepository(SQLCRUDRepository[MemberModel, Member], MemberRepository):
     model = MemberModel
@@ -131,6 +165,37 @@ class SQLMemberRepository(SQLCRUDRepository[MemberModel, Member], MemberReposito
             raise ConflictError(f"Data conflict error: {e}") from e
         except SQLAlchemyError as e:
             raise CreationError(f"Error while creation: {e}") from e
+
+    async def get_by_room_and_user(self, room_id: UUID, user_id: UUID) -> Member | None:
+        try:
+            stmt = (
+                select(self.model)
+                .where(
+                    (self.model.room_id == room_id) &
+                    (self.model.user_id == user_id)
+                )
+            )
+            result = await self.session.execute(stmt)
+            model = result.scalar_one_or_none()
+            return self.schema.model_validate(model) if model else None
+        except SQLAlchemyError as e:
+            raise ReadingError(f"Error while reading: {e}") from e
+
+    async def get_permissions(self, id: UUID) -> list[Permission]:  # noqa: A002
+        try:
+            stmt = (
+                select(PermissionModel)
+                .join(MemberPermissionModel)
+                .where(
+                    (MemberPermissionModel.member_id == id) &
+                    MemberPermissionModel.granted
+                )
+            )
+            results = await self.session.execute(stmt)
+            models = results.scalars().all()
+            return [Permission.model_validate(model) for model in models]
+        except SQLAlchemyError as e:
+            raise ReadingError(f"Error while reading: {e}") from e
 
 
 class SQLRoleRepository(SQLCRUDRepository[RoleModel, Role], RoleRepository):

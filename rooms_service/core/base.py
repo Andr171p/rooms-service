@@ -7,20 +7,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, PositiveInt
 
+from .commands import Command
 from .constants import EventStatus
-from .domain import Member, Permission, Role, Room
+from .domain import Member, Permission, Role, RolePermissions, Room
 from .events import OutboxEvent
 from .value_objects import MessagePayload
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
-
-
-class Command(ABC, BaseModel):
-    """Абстрактный класс для создания команды"""
-
-
-class Query(ABC, BaseModel):
-    """Абстрактный класс для создания запроса"""
 
 
 class CommandHandler[ResultT: BaseModel](ABC):
@@ -60,11 +53,23 @@ class RoomRepository(CRUDRepository[Room]):
     ) -> list[Member]:
         """Получает всех участников комнаты"""
 
+    @abstractmethod
+    async def get_roles_permissions(self, id: UUID) -> list[RolePermissions]:  # noqa: A002
+        """Получает все роли с их правами в комнате"""
+
 
 class MemberRepository(CRUDRepository[Member]):
     @abstractmethod
     async def bulk_create(self, members: list[Member]) -> None:
         """Создаёт за одну операцию множество ресурсов"""
+
+    @abstractmethod
+    async def get_by_room_and_user(self, room_id: UUID, user_id: UUID) -> Member | None:
+        """Получает участника в комнате по его ID пользователя"""
+
+    @abstractmethod
+    async def get_permissions(self, id: UUID) -> list[Permission]:  # noqa: A002
+        """Получает права выданные участнику комнаты"""
 
 
 class RoleRepository(CRUDRepository[Role]):

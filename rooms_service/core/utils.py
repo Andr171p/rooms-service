@@ -5,6 +5,7 @@ import logging
 from collections.abc import Callable, Coroutine
 from datetime import datetime, timedelta
 from functools import wraps
+from uuid import uuid4
 
 import pytz
 from pydantic import NonNegativeInt, PositiveInt
@@ -86,3 +87,8 @@ def calculate_total_pages(total_count: NonNegativeInt, limit: PositiveInt) -> in
     if total_count % limit != 0:
         return total_count // limit + 1
     return total_count // limit
+
+
+def generate_correlation_id(prefix: str = "corr") -> str:
+    """Генерирует уникальный ID для трассировки и дебагинга событий между сервисами"""
+    return f"{prefix}-{datetime.now(tz=moscow_tz).microsecond}-{str(uuid4())[:8]}"

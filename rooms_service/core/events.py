@@ -6,8 +6,9 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, NonNegativeInt, computed_field
 
-from .constants import EventStatus, RoomType, RoomVisibility
-from .utils import current_datetime
+from .constants import SOURCE, EventStatus, RoomType, RoomVisibility
+from .domain import Member, Role, RolePermissions
+from .utils import current_datetime, generate_correlation_id
 from .value_objects import Name, RoomSettings, Slug
 
 
@@ -18,11 +19,15 @@ class Event(BaseModel):
         event_id: Уникальный идентификатор события.
         event_type: Тип события, например: send_message, create_room, ...
         event_status: Текущий статус события.
+        source: Источник публикуемого события.
+        correlation_id: ID для трассировки события между микро-сервисами.
         created_at: Время создания события.
     """
     event_id: UUID = Field(default_factory=uuid4)
     event_type: str
     event_status: EventStatus = EventStatus.NEW
+    source: str = SOURCE
+    correlation_id: str = Field(default_factory=lambda: generate_correlation_id(SOURCE))
     created_at: datetime = Field(default_factory=current_datetime)
 
 
@@ -53,4 +58,6 @@ class RoomCreatedEvent(Event):
     created_by: UUID
     visibility: RoomVisibility
     settings: RoomSettings
-    initial_members: list[UUID]
+    members: list[Member]
+    roles: list[Role]
+    roles_permissions: list[RolePermissions]
