@@ -7,8 +7,9 @@ MIN_NAME_LENGTH = 1
 MAX_NAME_LENGTH = 100
 # Максимальное количество первичных участников комнаты
 MAX_INITIAL_USERS = 50
-# Самый высокий приоритет роли
-HIGHEST_PRIORITY = 1
+# Предельные значения приоритета роли
+MAX_ROLE_PRIORITY = 100
+MIN_ROLE_PRIORITY = 1
 # минимальное количество частей в коде привилегий
 MIN_PERMISSION_CODE_PARTS = 2
 # Предельные значения числа участников группового чата

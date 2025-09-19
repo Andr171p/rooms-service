@@ -6,7 +6,6 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from .constants import (
-    HIGHEST_PRIORITY,
     InvitationStatus,
     MemberStatus,
     RoleType,
@@ -14,7 +13,7 @@ from .constants import (
     RoomVisibility,
 )
 from .utils import configure_default_room_settings, current_datetime
-from .value_objects import Name, PermissionCode, RoomSettings, Slug
+from .value_objects import Name, PermissionCode, RoomSettings, Slug, PriorityInt
 
 
 class Room(BaseModel):
@@ -88,7 +87,7 @@ class Role(BaseModel):
     type: RoleType
     name: Name
     description: str | None = None
-    priority: int = Field(..., ge=HIGHEST_PRIORITY)
+    priority: PriorityInt
 
 
 class Permission(BaseModel):

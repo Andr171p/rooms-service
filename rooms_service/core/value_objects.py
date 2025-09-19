@@ -26,9 +26,21 @@ from .constants import (
     UNLIMITED_MEDIA_FORMATS,
     JoinPermission,
     MediaType,
+    MIN_ROLE_PRIORITY,
+    MAX_ROLE_PRIORITY,
 )
 
 MessagePayload = str | dict[str, Any] | BaseModel | list[BaseModel] | list[dict[str, Any]]
+
+
+class PriorityInt(int):
+    """Тип для валидации приоритета роли"""
+    def __new__(cls, value: int, *args, **kwargs) -> int:
+        if not (MIN_ROLE_PRIORITY <= value <= MAX_ROLE_PRIORITY):
+            raise ValueError(
+                f"Priority must be between {MIN_ROLE_PRIORITY} and {MAX_ROLE_PRIORITY}!"
+            )
+        return super().__new__(cls, value)
 
 
 class _StrPrimitiveValidator(UserString):
