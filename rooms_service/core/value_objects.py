@@ -22,7 +22,7 @@ from .constants import (
     MIN_MEMBERS,
     MIN_NAME_LENGTH,
     MIN_PINNED_MESSAGES,
-    PERMISSION_CODE_PARTS,
+    MIN_PERMISSION_CODE_PARTS,
     UNLIMITED_MEDIA_FORMATS,
     JoinPermission,
     MediaType,
@@ -63,7 +63,7 @@ class PermissionCode(_StrPrimitiveValidator):
                 For example: 'message:send', 'room:create', 'member:delete
                 """
             )
-        if len(code.split(":")) != PERMISSION_CODE_PARTS:
+        if len(code.split(":")) < MIN_PERMISSION_CODE_PARTS:
             raise ValueError("Invalid permission code!")
         return code
 

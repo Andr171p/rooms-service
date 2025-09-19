@@ -30,7 +30,9 @@ class OutboxEventModel(Base):
     partition_key: Mapped[str]
 
     __table_args__ = (
-        Index("outbox_index", "status", "aggregate_id", "dedup_key", "partition_key"),
+        Index(
+            "outbox_index", "event_status", "aggregate_id", "dedup_key", "partition_key"
+        ),
     )
 
 

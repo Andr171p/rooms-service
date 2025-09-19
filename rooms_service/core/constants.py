@@ -9,8 +9,8 @@ MAX_NAME_LENGTH = 100
 MAX_INITIAL_USERS = 50
 # Самый высокий приоритет роли
 HIGHEST_PRIORITY = 1
-# Количество частей в коде привилегий
-PERMISSION_CODE_PARTS = 2
+# минимальное количество частей в коде привилегий
+MIN_PERMISSION_CODE_PARTS = 2
 # Предельные значения числа участников группового чата
 DEFAULT_CHANNEL_MEMBERS = 1_000_000
 DEFAULT_GROUP_MEMBERS = 1_000

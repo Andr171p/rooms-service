@@ -10,7 +10,7 @@ from uuid import uuid4
 import pytz
 from pydantic import NonNegativeInt, PositiveInt
 
-from .constants import TYPE_TO_MAX_MEMBERS_MAP, JoinPermission, RoomType, RoomVisibility
+from .constants import ROOM_TYPE_TO_MAX_MEMBERS_MAP, JoinPermission, RoomType, RoomVisibility
 from .value_objects import (
     RoomMediaSettings,
     RoomMembersSettings,
@@ -70,7 +70,7 @@ def configure_default_room_settings(
             allow_forwarding=not RoomVisibility.PRIVATE,
         ),
         members=RoomMembersSettings(
-            max_members=TYPE_TO_MAX_MEMBERS_MAP[room_type],
+            max_members=ROOM_TYPE_TO_MAX_MEMBERS_MAP[room_type],
             join_permission=join_permission
         ),
         media=RoomMediaSettings(),

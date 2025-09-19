@@ -49,7 +49,7 @@ class OutboxEvent(Event):
 
 class RoomCreatedEvent(Event):
     """Комната создана"""
-    event_type = "room_created"
+    event_type: str = "room_created"
 
     id: UUID
     name: Name
