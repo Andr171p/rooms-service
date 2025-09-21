@@ -8,7 +8,9 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.base import MemberRepository, RoleRepository, RoomRepository
-from ..core.domain import Member, Permission, Role, RolePermissions, Room
+from ..core.constants import MemberPermissionStatus
+from ..core.domain import Member, Permission, Role, Room
+from ..core.dto import RolePermission
 from ..core.exceptions import (
     ConflictError,
     CreationError,
@@ -16,7 +18,6 @@ from ..core.exceptions import (
     ReadingError,
     UpdateError,
 )
-from ..core.value_objects import PermissionCode
 from .base import Base
 from .models import (
     MemberModel,
@@ -126,28 +127,36 @@ class SQLRoomRepository(SQLCRUDRepository[RoomModel, Room], RoomRepository):
         except SQLAlchemyError as e:
             raise ReadingError(f"Error while reading: {e}") from e
 
-    async def get_roles_permissions(self, id: UUID) -> list[RolePermissions]:  # noqa: A002
+    async def get_roles(self, id: UUID) -> list[Role]:
         try:
             stmt = (
-                select(RoleModel.id, PermissionModel.code)
+                select(RoleModel)
+                .join(RoomRoleModel, RoomRoleModel.room_id == id)
+                .where(RoomRoleModel.role_id == RoleModel.id)
+            )
+            results = await self.session.execute(stmt)
+            models = results.scalars().all()
+            return [Role.model_validate(model) for model in models]
+        except SQLAlchemyError as e:
+            raise ReadingError(f"Error while reading: {e}") from e
+
+    async def get_role_permissions(self, id: UUID) -> list[RolePermission]:  # noqa: A002
+        try:
+            stmt = (
+                select(RoleModel.id, RoleModel.name, PermissionModel.code)
                 .join(RoomRoleModel, RoomRoleModel.role_id == RoleModel.id)
                 .join(RolePermissionModel, RolePermissionModel.role_id == RoleModel.id)
-                .join(PermissionModel, RolePermissionModel.permission_id == PermissionModel.id)
+                .join(PermissionModel, RolePermissionModel.permission_code == PermissionModel.code)
                 .where(RoomRoleModel.room_id == id)
                 .order_by(PermissionModel.code)
             )
             results = await self.session.execute(stmt)
-            roles_permissions: dict[UUID, dict[str, UUID | list[PermissionCode]]] = {}
-            for role_id, permission_code in results.all():
-                if role_id not in roles_permissions:
-                    roles_permissions[role_id] = {
-                        "role_id": role_id, "permission_codes": []
-                    }
-                roles_permissions[role_id]["permission_codes"].append(permission_code)
-            return [
-                RolePermissions.model_validate(role_permissions)
-                for role_permissions in roles_permissions.values()
-            ]
+            role_permissions: list[RolePermission] = []
+            for role_id, role_name, permission_code in results.all():
+                role_permissions.append(RolePermission(
+                    role_id=role_id, role_name=role_name, permission_code=permission_code
+                ))
+            return role_permissions
         except SQLAlchemyError as e:
             raise ReadingError(f"Error while reading: {e}") from e
 
@@ -188,7 +197,7 @@ class SQLMemberRepository(SQLCRUDRepository[MemberModel, Member], MemberReposito
                 .join(MemberPermissionModel)
                 .where(
                     (MemberPermissionModel.member_id == id) &
-                    MemberPermissionModel.granted
+                    MemberPermissionModel.status == MemberPermissionStatus.GRANT
                 )
             )
             results = await self.session.execute(stmt)
@@ -217,7 +226,7 @@ class SQLRoleRepository(SQLCRUDRepository[RoleModel, Role], RoleRepository):
                 select(PermissionModel)
                 .join(
                     RolePermissionModel,
-                    RolePermissionModel.permission_id == PermissionModel.id,
+                    RolePermissionModel.permission_code == PermissionModel.code,
                 )
                 .where(RolePermissionModel.role_id == role_id)
             )

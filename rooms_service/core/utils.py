@@ -10,7 +10,13 @@ from uuid import uuid4
 import pytz
 from pydantic import NonNegativeInt, PositiveInt
 
-from .constants import ROOM_TYPE_TO_MAX_MEMBERS_MAP, JoinPermission, RoomType, RoomVisibility
+from .constants import (
+    ROOM_TYPE_TO_MAX_MEMBERS_MAP,
+    SOURCE,
+    JoinPermission,
+    RoomType,
+    RoomVisibility,
+)
 from .value_objects import (
     RoomMediaSettings,
     RoomMembersSettings,
@@ -89,6 +95,6 @@ def calculate_total_pages(total_count: NonNegativeInt, limit: PositiveInt) -> in
     return total_count // limit
 
 
-def generate_correlation_id(prefix: str = "corr") -> str:
+def generate_correlation_id(prefix: str = SOURCE) -> str:
     """Генерирует уникальный ID для трассировки и дебагинга событий между сервисами"""
     return f"{prefix}-{datetime.now(tz=moscow_tz).microsecond}-{str(uuid4())[:8]}"

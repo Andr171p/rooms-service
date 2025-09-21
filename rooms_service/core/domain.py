@@ -103,19 +103,6 @@ class Permission(BaseModel):
     category: str
 
 
-class RolePermissions(BaseModel):
-    role_id: UUID
-    permission_codes: list[PermissionCode]
-
-
-class MemberPermission(BaseModel):
-    """Маппинг ролей и прав"""
-    id: UUID = Field(default_factory=uuid4)
-    member_id: UUID
-    permission_id: UUID
-    granted: bool
-
-
 class Invitation(BaseModel):
     """Приглашение для пользователя на вступление в комнату
 

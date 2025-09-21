@@ -7,7 +7,8 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, NonNegativeInt, computed_field
 
 from .constants import SOURCE, EventStatus, RoomType, RoomVisibility
-from .domain import Member, Role, RolePermissions
+from .domain import Member, Role
+from .dto import RolePermission
 from .utils import current_datetime, generate_correlation_id
 from .value_objects import Name, RoomSettings, Slug
 
@@ -27,7 +28,7 @@ class Event(BaseModel):
     event_type: str
     event_status: EventStatus = EventStatus.NEW
     source: str = SOURCE
-    correlation_id: str = Field(default_factory=lambda: generate_correlation_id(SOURCE))
+    correlation_id: str = Field(default_factory=generate_correlation_id)
     created_at: datetime = Field(default_factory=current_datetime)
 
 
@@ -59,5 +60,4 @@ class RoomCreatedEvent(Event):
     visibility: RoomVisibility
     settings: RoomSettings
     members: list[Member]
-    roles: list[Role]
-    roles_permissions: list[RolePermissions]
+    role_permissions: list[RolePermission]

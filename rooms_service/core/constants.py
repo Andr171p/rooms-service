@@ -123,3 +123,9 @@ ROOM_TYPE_TO_SYSTEM_ROLE_MAP: dict[RoomType, SystemRole] = {
     RoomType.GROUP: SystemRole.MEMBER,
     RoomType.CHANNEL: SystemRole.GUEST,
 }
+
+
+class MemberPermissionStatus(StrEnum):
+    """Статус права для участника"""
+    GRANT = "grant"
+    DENY = "deny"

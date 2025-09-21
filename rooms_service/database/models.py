@@ -49,12 +49,12 @@ class MemberModel(Base):
 
     user_id: Mapped[PostgresUUID]
     room_id: Mapped[UUID] = mapped_column(ForeignKey("rooms.id"), unique=False)
-    role_id: Mapped[UUID] = mapped_column(ForeignKey("roles.id"), unique=False)
+    role_id: Mapped[UUID] = mapped_column(ForeignKey("room_roles.id"), unique=False)
     status: Mapped[str]
     joined_at: Mapped[DatetimeDefault]
 
     room: Mapped["RoomModel"] = relationship(back_populates="members")
-    role: Mapped["RoleModel"] = relationship(back_populates="members")
+    room_role: Mapped["RoomRoleModel"] = relationship(back_populates="members")
     member_permissions: Mapped[list["MemberPermissionModel"]] = relationship(
         back_populates="member", cascade="all, delete-orphan"
     )
@@ -72,7 +72,7 @@ class RoleModel(Base):
     description: Mapped[TextNullable]
     priority: Mapped[int]
 
-    roles_permissions: Mapped[list["RolePermissionModel"]] = relationship(
+    role_permissions: Mapped[list["RolePermissionModel"]] = relationship(
         back_populates="role", cascade="all, delete-orphan"
     )
     room_roles: Mapped[list["RoomRoleModel"]] = relationship(back_populates="role")
@@ -86,6 +86,7 @@ class RoomRoleModel(Base):
 
     room: Mapped["RoomModel"] = relationship(back_populates="room_roles")
     role: Mapped["RoleModel"] = relationship(back_populates="room_roles")
+    members: Mapped[list["MemberModel"]] = relationship(back_populates="room_role")
 
     __table_args__ = (
         UniqueConstraint("room_id", "role_id", name="unique_room_role"),
@@ -95,28 +96,28 @@ class RoomRoleModel(Base):
 class PermissionModel(Base):
     __tablename__ = "permissions"
 
-    code: Mapped[str]
+    code: Mapped[StrUnique]
     category: Mapped[str]
 
-    roles_permissions: Mapped[list["RolePermissionModel"]] = relationship(
+    role_permissions: Mapped[list["RolePermissionModel"]] = relationship(
         back_populates="permission", cascade="all, delete-orphan"
     )
-    member_permissions: Mapped[list["RolePermissionModel"]] = relationship(
+    member_permissions: Mapped[list["MemberPermissionModel"]] = relationship(
         back_populates="permission", cascade="all, delete-orphan"
     )
 
 
 class RolePermissionModel(Base):
-    __tablename__ = "roles_permissions"
+    __tablename__ = "role_permissions"
 
     role_id: Mapped[UUID] = mapped_column(ForeignKey("roles.id"), unique=False)
-    permission_id: Mapped[UUID] = mapped_column(ForeignKey("permissions.id"), unique=False)
+    permission_code: Mapped[UUID] = mapped_column(ForeignKey("permissions.code"), unique=False)
 
-    role: Mapped["RoleModel"] = relationship(back_populates="roles_permissions")
-    permission: Mapped["PermissionModel"] = relationship(back_populates="roles_permissions")
+    role: Mapped["RoleModel"] = relationship(back_populates="role_permissions")
+    permission: Mapped["PermissionModel"] = relationship(back_populates="role_permissions")
 
     __table_args__ = (
-        UniqueConstraint("role_id", "permission_id", name="unique_role_permission"),
+        UniqueConstraint("role_id", "permission_code", name="unique_role_permission"),
     )
 
 
@@ -124,12 +125,12 @@ class MemberPermissionModel(Base):
     __tablename__ = "member_permissions"
 
     member_id: Mapped[UUID] = mapped_column(ForeignKey("members.id"), unique=True)
-    permission_id: Mapped[UUID] = mapped_column(ForeignKey("permissions.id"), unique=False)
-    granted: Mapped[bool] = mapped_column(default=True)
+    permission_code: Mapped[UUID] = mapped_column(ForeignKey("permissions.code"), unique=False)
+    status: Mapped[str] = mapped_column(default="grant")
 
     member: Mapped["MemberModel"] = relationship(back_populates="member_permissions")
     permission: Mapped["PermissionModel"] = relationship(back_populates="member_permissions")
 
     __table_args__ = (
-        UniqueConstraint("member_id", "permission_id", name="unique_member_permission"),
+        UniqueConstraint("member_id", "permission_code", name="unique_member_permission"),
     )

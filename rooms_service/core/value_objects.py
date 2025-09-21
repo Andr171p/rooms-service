@@ -33,14 +33,36 @@ from .constants import (
 MessagePayload = str | dict[str, Any] | BaseModel | list[BaseModel] | list[dict[str, Any]]
 
 
-class PriorityInt(int):
-    """Тип для валидации приоритета роли"""
+class _IntPrimitiveValidator(int):
     def __new__(cls, value: int, *args, **kwargs) -> int:
+        value = cls.validate(value, *args, **kwargs)
+        return super().__new__(cls, value)
+
+    @classmethod
+    def validate(cls, value: int, *args, **kwargs) -> int: pass
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+            cls,
+            source_type: Any,
+            handler: Callable[[Any], CoreSchema],
+    ) -> CoreSchema:
+        return core_schema.no_info_after_validator_function(
+            cls.validate,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(str),
+        )
+
+
+class PriorityInt(_IntPrimitiveValidator):
+    """Тип для валидации приоритета роли"""
+    @classmethod
+    def validate(cls, value: int, *args, **kwargs) -> int:
         if not (MIN_ROLE_PRIORITY <= value <= MAX_ROLE_PRIORITY):
             raise ValueError(
                 f"Priority must be between {MIN_ROLE_PRIORITY} and {MAX_ROLE_PRIORITY}!"
             )
-        return super().__new__(cls, value)
+        return value
 
 
 class _StrPrimitiveValidator(UserString):

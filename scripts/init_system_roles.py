@@ -1,57 +1,60 @@
 from uuid import uuid4
 
-ROLES: list[dict[str, str]] = [
+SYSTEM_ROLES: list[dict[str, str]] = [
     {
         "id": uuid4(),
         "type": "system",
         "name": "owner",
         "description": "Владелец комнаты",
-        "priority": 1
+        "priority": 100
     },
     {
         "id": uuid4(),
         "type": "system",
         "name": "admin",
         "description": "Администратор комнаты",
-        "priority": 2
+        "priority": 80
     },
     {
         "id": uuid4(),
         "type": "system",
         "name": "moderator",
         "description": "Модератор комнаты",
-        "priority": 3
+        "priority": 60
     },
     {
         "id": uuid4(),
         "type": "system",
         "name": "member",
         "description": "Обычный участник",
-        "priority": 4
+        "priority": 50
     },
     {
         "id": uuid4(),
         "type": "system",
         "name": "guest",
         "description": "Гость (ограниченные права)",
-        "priority": 5
+        "priority": 30
     },
 ]
 
 PERMISSIONS: list[dict[str, str]] = [
     # Комната
-    {"id": uuid4(), "code": "room:edit", "category": "room"},
-    {"id": uuid4(), "code": "room:delete", "category": "room"},
+    {"code": "room:edit", "category": "room"},
+    {"code": "room:delete", "category": "room"},
     # Настройки комнаты
-    {"id": uuid4(), "code": "room_settings:edit", "category": "room_settings"},
-    {"id": uuid4(), "code": "room_settings:messages:edit", "category": "room_settings"},
-    {"id": uuid4(), "code": "room_settings:members:edit", "category": "room_settings"},
-    {"id": uuid4(), "code": "room_settings:media:edit", "category": "room_settings"},
+    {"code": "room_settings:edit", "category": "room_settings"},
+    {"code": "room_settings:messages:edit", "category": "room_settings"},
+    {"code": "room_settings:members:edit", "category": "room_settings"},
+    {"code": "room_settings:media:edit", "category": "room_settings"},
     # Участники
-    {"id": uuid4(), "code": "member:invite", "category": "member"},
-    {"id": uuid4(), "code": "member:delete", "category": "member"},
-    {"id": uuid4(), "code": "member:ban", "category": "member"},
-    {"id": uuid4(), "code": "member:change_role", "category": "member"},
+    {"code": "member:invite", "category": "member"},
+    {"code": "member:delete", "category": "member"},
+    {"code": "member:ban", "category": "member"},
+    {"code": "member:change_role", "category": "member"},
     # Сообщения
-    {"id": uuid4(), "code": "message:send", "category": "message"},
+    {"code": "message:send", "category": "message"},
+    {"code": "message:edit", "category": "message"},
+    {"code": "message:delete", "category": "message"},
+    {"code": "message:pin", "category": "message"},
 ]

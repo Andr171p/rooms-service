@@ -9,7 +9,8 @@ from pydantic import BaseModel, PositiveInt
 
 from .commands import Command
 from .constants import EventStatus
-from .domain import Member, Permission, Role, RolePermissions, Room
+from .domain import Member, Permission, Role, Room
+from .dto import RolePermission
 from .events import OutboxEvent
 from .value_objects import MessagePayload
 
@@ -54,7 +55,11 @@ class RoomRepository(CRUDRepository[Room]):
         """Получает всех участников комнаты"""
 
     @abstractmethod
-    async def get_roles_permissions(self, id: UUID) -> list[RolePermissions]:  # noqa: A002
+    async def get_roles(self, id: UUID) -> list[Role]:
+        """Получает все роли доступные в комнате"""
+
+    @abstractmethod
+    async def get_role_permissions(self, id: UUID) -> list[RolePermission]:  # noqa: A002
         """Получает все роли с их правами в комнате"""
 
 
