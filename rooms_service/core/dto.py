@@ -10,10 +10,10 @@ class _DTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class RolePermission(_DTO):
+class RolePermissions(_DTO):
     role_id: UUID
     role_name: Name
-    permission_code: PermissionCode
+    permissions: list[PermissionCode]
 
 
 class MemberPermission(_DTO):

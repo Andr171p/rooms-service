@@ -49,12 +49,12 @@ class MemberModel(Base):
 
     user_id: Mapped[PostgresUUID]
     room_id: Mapped[UUID] = mapped_column(ForeignKey("rooms.id"), unique=False)
-    role_id: Mapped[UUID] = mapped_column(ForeignKey("room_roles.id"), unique=False)
+    role_id: Mapped[UUID] = mapped_column(ForeignKey("roles.id"), unique=False)
     status: Mapped[str]
     joined_at: Mapped[DatetimeDefault]
 
     room: Mapped["RoomModel"] = relationship(back_populates="members")
-    room_role: Mapped["RoomRoleModel"] = relationship(back_populates="members")
+    role: Mapped["RoleModel"] = relationship(back_populates="member")
     member_permissions: Mapped[list["MemberPermissionModel"]] = relationship(
         back_populates="member", cascade="all, delete-orphan"
     )
@@ -76,6 +76,7 @@ class RoleModel(Base):
         back_populates="role", cascade="all, delete-orphan"
     )
     room_roles: Mapped[list["RoomRoleModel"]] = relationship(back_populates="role")
+    member: Mapped["MemberModel"] = relationship(back_populates="role")
 
 
 class RoomRoleModel(Base):

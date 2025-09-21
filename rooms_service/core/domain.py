@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Self
 
 from datetime import datetime
@@ -59,14 +61,14 @@ class Member(BaseModel):
         id: Уникальный идентификатор участника.
         user_id: Идентификатор пользователя в системе.
         room_id: Идентификатор комнаты.
-        role_id: Роль которая выдана пользователю.
+        room_role_id: Роль которая выдана пользователю.
         status: Статус участника.
         joined_at: Дата присоединения пользователя к комнате.
     """
     id: UUID = Field(default_factory=uuid4)
     user_id: UUID
     room_id: UUID
-    role_id: UUID
+    room_role_id: UUID
     status: MemberStatus = MemberStatus.ACTIVE
     joined_at: datetime = Field(default_factory=current_datetime)
 

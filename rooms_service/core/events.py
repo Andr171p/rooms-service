@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, NonNegativeInt, computed_field
 
 from .constants import SOURCE, EventStatus, RoomType, RoomVisibility
 from .domain import Member, Role
-from .dto import RolePermission
+from .dto import RolePermissions
 from .utils import current_datetime, generate_correlation_id
 from .value_objects import Name, RoomSettings, Slug
 
@@ -59,5 +59,5 @@ class RoomCreatedEvent(Event):
     created_by: UUID
     visibility: RoomVisibility
     settings: RoomSettings
-    members: list[Member]
-    role_permissions: list[RolePermission]
+    initial_members: list[Member]
+    roles_permissions: list[RolePermissions]
