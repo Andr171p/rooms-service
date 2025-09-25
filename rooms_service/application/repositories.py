@@ -55,10 +55,6 @@ class GenericCRUDRepository(Protocol[EntityT]):
         """Получает сущность по её уникальному идентификатору"""
 
     @abstractmethod
-    async def read_all(self, limit: PositiveInt, page: PositiveInt) -> list[EntityT]:
-        """Получает все объекты (использует пагинацию)"""
-
-    @abstractmethod
     async def update(self, id: UUID, **kwargs) -> EntityT | None:  # noqa: A002
         """Обновляет состояние сущности"""
 
@@ -78,7 +74,7 @@ class MemberRepository(GenericCRUDRepository[Member]):
         """Переопределения создания сущности участника"""
 
     @abstractmethod
-    async def bulk_create(self, members: list[MemberCreate]) -> None:
+    async def bulk_create(self, members: list[MemberCreate]) -> list[Member]:
         """Создание множества участников за раз"""
 
     @abstractmethod

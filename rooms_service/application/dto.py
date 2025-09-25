@@ -12,7 +12,7 @@ class _DTO(BaseModel):
 
 
 class MemberCreate(_DTO):
-    """Создание пользователя"""
+    """Необходимые данные для создания участника"""
     user_id: UUID
     room_id: UUID
     role_id: UUID
