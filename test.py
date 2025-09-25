@@ -1,3 +1,8 @@
-from rooms_service.core.value_objects import PriorityInt
+from pydantic import PositiveInt
 
-print(PriorityInt(101))
+
+def calculate(a: PositiveInt, b: PositiveInt) -> PositiveInt:
+    return a + b
+
+
+print(calculate(5, 0))
