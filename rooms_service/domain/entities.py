@@ -103,3 +103,11 @@ class Permission(_Entity):
     """
     code: PermissionCode
     category: str
+
+    def __hash__(self) -> int:
+        return hash(self.code)
+
+    def __eq__(self, other: Permission) -> bool:
+        if not isinstance(other, Permission):
+            return False
+        return self.id == other.id and self.code == other.code and self.category == other.category
