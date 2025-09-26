@@ -1,11 +1,9 @@
 from abc import ABC
-from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
-from ..domain.rules import current_datetime
-from ..domain.value_objects import MemberStatus
+from ..domain.value_objects import CurrentDatetime, MemberStatus
 
 
 class _DTO(BaseModel, ABC):
@@ -18,4 +16,4 @@ class MemberCreate(_DTO):
     room_id: UUID
     role_id: UUID
     status: MemberStatus = MemberStatus.ACTIVE
-    joined_at: datetime = Field(default_factory=current_datetime)
+    joined_at: CurrentDatetime
