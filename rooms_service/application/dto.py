@@ -9,7 +9,7 @@ from ..domain.value_objects import MemberStatus
 
 
 class _DTO(BaseModel, ABC):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, frozen=True)
 
 
 class MemberCreate(_DTO):

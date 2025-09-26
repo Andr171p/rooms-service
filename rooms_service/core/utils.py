@@ -97,4 +97,4 @@ def calculate_total_pages(total_count: NonNegativeInt, limit: PositiveInt) -> in
 
 def generate_correlation_id(prefix: str = SOURCE) -> str:
     """Генерирует уникальный ID для трассировки и дебагинга событий между сервисами"""
-    return f"{prefix}-{datetime.now(tz=moscow_tz).microsecond}-{str(uuid4())[:8]}"
+    return f"{prefix}--{current_datetime().microsecond}--{str(uuid4())[:8]}"

@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import Self
 
 from abc import ABC
-from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import BaseModel, ConfigDict, computed_field, model_validator
 
-from .rules import configure_default_room_settings, current_datetime
+from .rules import configure_default_room_settings
 from .value_objects import (
+    CurrentDatetime,
     Id,
     MemberStatus,
     Name,
@@ -47,7 +47,7 @@ class Room(_Entity):
     name: Name | None = None
     slug: Slug | None = None
     visibility: RoomVisibility = RoomVisibility.PUBLIC
-    created_at: datetime = Field(default_factory=current_datetime)
+    created_at: CurrentDatetime
 
     @property
     @computed_field(description="Настройки комнаты")
@@ -76,7 +76,7 @@ class Member(_Entity):
     room_id: UUID
     role: Role
     status: MemberStatus = MemberStatus.ACTIVE
-    joined_at: datetime = Field(default_factory=current_datetime)
+    joined_at: CurrentDatetime
 
 
 class Role(_Entity):

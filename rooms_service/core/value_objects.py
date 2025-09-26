@@ -17,17 +17,17 @@ from .constants import (
     MAX_MEMBERS,
     MAX_NAME_LENGTH,
     MAX_PINNED_MESSAGES,
+    MAX_ROLE_PRIORITY,
     MIN_ADMINS,
     MIN_MEDIA_SIZE,
     MIN_MEMBERS,
     MIN_NAME_LENGTH,
-    MIN_PINNED_MESSAGES,
     MIN_PERMISSION_CODE_PARTS,
+    MIN_PINNED_MESSAGES,
+    MIN_ROLE_PRIORITY,
     UNLIMITED_MEDIA_FORMATS,
     JoinPermission,
     MediaType,
-    MIN_ROLE_PRIORITY,
-    MAX_ROLE_PRIORITY,
 )
 
 MessagePayload = str | dict[str, Any] | BaseModel | list[BaseModel] | list[dict[str, Any]]

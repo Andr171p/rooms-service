@@ -4,12 +4,14 @@ from typing import Annotated, Any
 
 from collections import UserString
 from collections.abc import Callable
+from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_core import CoreSchema, core_schema
 
+from ..core.constants import SOURCE
 from .constants import (
     DEFAULT_ADMINS,
     DEFAULT_MEDIA_SIZE,
@@ -29,9 +31,12 @@ from .constants import (
     MIN_ROLE_PRIORITY,
     UNLIMITED_MEDIA_FORMATS,
 )
+from .rules import current_datetime
 
 # Уникальный UUID идентификатор
 Id = Annotated[UUID, Field(default_factory=uuid4)]
+# Текущее время
+CurrentDatetime = Annotated[datetime, Field(default_factory=current_datetime)]
 
 
 class EventStatus(StrEnum):
@@ -198,6 +203,30 @@ class Slug(_StrPrimitiveValidator):
         if not (MIN_NAME_LENGTH <= len(slug) <= MAX_NAME_LENGTH):
             raise ValueError("Name length must be between 1 and 100 characters!")
         return slug.lower()
+
+
+class CorrelationId(_StrPrimitiveValidator):
+    """Id для дебагинга и трассировки между микросервисами.
+
+    Структура correlation_id:
+    [название сервиса]--[микросекунды]--[первые 8 символов UUID]
+    """
+
+    CORRELATION_ID_PARTS = 3  # Количество составляющих correlation_id.
+
+    @classmethod
+    def validate(cls, correlation_id: str) -> str:
+        parts: list[str] = correlation_id.split("--")
+        if len(parts) != cls.CORRELATION_ID_PARTS:
+            raise ValueError("Correlation ID must have 3 parts!")
+        second_part = parts[1]
+        if not second_part.isdigit():
+            raise ValueError("Correlation ID does not contain time of creation in microseconds!")
+        if current_datetime().microsecond < int(second_part):
+            raise ValueError(
+                "Current time cannot be less than the time the correlation id was created!"
+            )
+        return correlation_id
 
 
 class RoomSettings(BaseModel):

@@ -20,7 +20,7 @@ ModelT = TypeVar("ModelT", bound=Base)
 EntityT = TypeVar("EntityT", bound=BaseModel)
 
 
-class SQLGenericCRUDRepository[ModelT: Base, EntityT: BaseModel]:
+class SQLCRUDRepository[ModelT: Base, EntityT: BaseModel]:
     model: type[ModelT]
     entity: type[EntityT]
 
