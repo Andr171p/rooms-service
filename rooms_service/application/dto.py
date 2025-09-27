@@ -36,11 +36,11 @@ class RoomCreate(_DTO):
             (задаётся пользователем или генерируется автоматически)
             type: Тип создаваемой комнаты.
             visibility: Видимость комнаты для других пользователей.
-            initial_users: Пользователи, которых нужно добавить в комнату.
+            members: Участники, которых нужно добавить в комнату.
         """
     created_by: UUID
     name: Name
     slug: Slug
     type: RoomType
     visibility: RoomVisibility
-    initial_users: list[UUID]
+    members: list[MemberCreate]

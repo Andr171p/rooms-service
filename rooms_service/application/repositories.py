@@ -9,8 +9,8 @@ from uuid import UUID
 from pydantic import BaseModel, PositiveInt
 
 from ..domain.aggragates import RoomRole
-from ..domain.entities import Member, Room
-from ..domain.value_objects import MemberIdentity
+from ..domain.entities import Member, Role, Room
+from ..domain.value_objects import MemberIdentity, Name
 from .dto import MemberCreate
 
 EntityT = TypeVar("EntityT", bound=BaseModel)
@@ -21,6 +21,7 @@ class UnitOfWork(ABC):
      обеспечивающий атомарность и согласованность данных.
     """
     room_repository: RoomRepository
+    role_repository: RoleRepository
     member_repository: MemberRepository
 
     @abstractmethod
@@ -64,6 +65,11 @@ class RoomRepository(CRUDRepository[Room]):
     @abstractmethod
     async def get_members(self, id: UUID, limit: PositiveInt, page: PositiveInt) -> list[Member]:  # noqa: A002
         """Получает участников комнаты"""
+
+
+class RoleRepository(CRUDRepository[Role]):
+    async def get_by_name(self, name: Name) -> Role | None:
+        """Получает роль по её уникальному имени"""
 
 
 class MemberRepository(Protocol):
