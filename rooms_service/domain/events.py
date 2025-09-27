@@ -1,12 +1,13 @@
 from typing import Annotated, TypeVar
 
-from uuid import uuid4
+import time
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, computed_field
 
 from .constants import SOURCE
 from .rules import current_datetime
-from .value_objects import CorrelationId, CurrentDatetime, EventStatus, Id
+from .value_objects import CorrelationId, CurrentDatetime, EventStatus, EventType, Id
 
 PayloadType = TypeVar("PayloadType", bound=BaseModel)
 
@@ -32,7 +33,7 @@ class Event(BaseModel):
         created_at: Время создания события.
     """
     id: Id
-    type: str
+    type: EventType
     status: EventStatus
     source: str = SOURCE
     payload: PayloadType
@@ -40,3 +41,24 @@ class Event(BaseModel):
     created_at: CurrentDatetime
 
     model_config = ConfigDict(from_attributes=True, frozen=True)
+
+
+class OutboxEvent(BaseModel):
+    """Модель события для реализации Outbox паттерна.
+
+    Attributes:
+        aggregate_id: Идентификатор сущности, агрегата передаваемой в payload.
+        aggregate_type: Тип сущности, например: Room, Member,... etc.
+        retries: Количество попыток обработки события.
+    """
+    aggregate_id: UUID
+    aggregate_type: str
+    retries: NonNegativeInt = 0
+
+    @computed_field(description="Предотвращение обработки дубликатов события")
+    def dedup_key(self) -> str:
+        return f"{time.time()}--{self.aggregate_type}--{self.aggregate_id}"
+
+    @computed_field(description="Гарантия порядка обработки события для одного агрегата")
+    def partition_key(self) -> str:
+        return f"{self.aggregate_type}--{self.aggregate_id}"

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Self
 
 from collections import UserString
 from collections.abc import Callable
@@ -11,7 +11,6 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_core import CoreSchema, core_schema
 
-from ..core.constants import SOURCE
 from .constants import (
     DEFAULT_ADMINS,
     DEFAULT_MEDIA_SIZE,
@@ -117,7 +116,7 @@ class MemberPermissionStatus(StrEnum):
 
 
 class _IntPrimitiveValidator(int):
-    def __new__(cls, value: int, *args, **kwargs) -> int:
+    def __new__(cls, value: int, *args, **kwargs) -> Self:
         value = cls.validate(value, *args, **kwargs)
         return super().__new__(cls, value)
 
@@ -132,8 +131,8 @@ class _IntPrimitiveValidator(int):
     ) -> CoreSchema:
         return core_schema.no_info_after_validator_function(
             cls.validate,
-            core_schema.str_schema(),
-            serialization=core_schema.plain_serializer_function_ser_schema(str),
+            core_schema.int_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(int),
         )
 
 
@@ -143,7 +142,8 @@ class RolePriority(_IntPrimitiveValidator):
     def validate(cls, value: int, *args, **kwargs) -> int:  # noqa: ARG003
         if not (MIN_ROLE_PRIORITY <= value <= MAX_ROLE_PRIORITY):
             raise ValueError(
-                f"Priority must be between {MIN_ROLE_PRIORITY} and {MAX_ROLE_PRIORITY}!"
+                f"Priority must be between {MIN_ROLE_PRIORITY} and {MAX_ROLE_PRIORITY}! "
+                f"Invalid value: {value}"
             )
         return value
 
@@ -180,8 +180,10 @@ class PermissionCode(_StrPrimitiveValidator):
                 For example: 'message:send', 'room:create', 'member:delete
                 """
             )
-        if len(code.split(":")) < MIN_PERMISSION_CODE_PARTS:
-            raise ValueError("Invalid permission code!")
+        code_parts: list[str] = code.split(":")
+        no_empty_code_parts: list[str] = [code_part for code_part in code_parts if code_part]
+        if len(no_empty_code_parts) < MIN_PERMISSION_CODE_PARTS:
+            raise ValueError("Invalid permission code! Not enough no empty parts.")
         return code
 
 
@@ -227,6 +229,16 @@ class CorrelationId(_StrPrimitiveValidator):
                 "Current time cannot be less than the time the correlation id was created!"
             )
         return correlation_id
+
+
+class EventType(_StrPrimitiveValidator):
+    EVENT_TYPE_PARTS = 2
+
+    @classmethod
+    def validate(cls, event_type: str) -> str:
+        if len(event_type.split("_")) < cls.EVENT_TYPE_PARTS:
+            raise ValueError("Event type must have at least two characters!")
+        return event_type
 
 
 class RoomSettings(BaseModel):

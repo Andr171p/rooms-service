@@ -1,17 +1,15 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .value_objects import RoomSettings, RoomType, RoomVisibility, SystemRole
+
 from datetime import datetime
 
 import pytz
 
-from .value_objects import (
-    JoinPermission,
-    RoomMediaSettings,
-    RoomMembersSettings,
-    RoomMessagesSettings,
-    RoomSettings,
-    RoomType,
-    RoomVisibility,
-    SystemRole,
-)
+from .constants import DEFAULT_CHANNEL_MEMBERS, DEFAULT_DIRECT_MEMBERS, DEFAULT_GROUP_MEMBERS
 
 moscow_tz = pytz.timezone("Europe/Moscow")
 
@@ -21,49 +19,34 @@ def current_datetime() -> datetime:
     return datetime.now(moscow_tz)
 
 
-# ======================Правила для валидации примитивов======================
-MIN_NAME_LENGTH = 1
-MAX_NAME_LENGTH = 100
+def get_max_members_by_room(room_type: RoomType) -> int:
+    """Получение максимального числа участника для комнаты по её типу.
 
-# ======================Правила для комнат======================
-# Максимальное количество первичных участников комнаты
-MAX_INITIAL_USERS = 50
-# Предельные значения числа участников чата (комнаты)
-DEFAULT_CHANNEL_MEMBERS = 1_000_000
-DEFAULT_GROUP_MEMBERS = 1_000
-DEFAULT_DIRECT_MEMBERS = 2
-MIN_MEMBERS = 2
-MAX_MEMBERS = 10_000_000
-MIN_ADMINS = 1
-MAX_ADMINS = 50
-DEFAULT_ADMINS = 5
-# Значения для настроек сообщений в комнате
-DEFAULT_PINNED_MESSAGES = 5
-MIN_PINNED_MESSAGES = 1
-MAX_PINNED_MESSAGES = 100
-# Максимальный размер медиа контента в комнате
-MIN_MEDIA_SIZE = 50
-MAX_MEDIA_SIZE = 1024 * 2
-DEFAULT_MEDIA_SIZE = 250
-# Разрешённые типы файлов по умолчанию
-UNLIMITED_MEDIA_FORMATS: list[str] = ["*"]
-ALLOWED_MEDIA_FORMATS: tuple[str, ...] = (
-    "jpg", "jpeg", "png", "gif", "mp4", "mov", "pdf", "doc", "docx", "mp3"
-)
+    :param room_type: Тип комнаты.
+    """
+    from .value_objects import RoomType  # noqa: PLC0415
 
-# ======================Маппинг типа комнаты к её настройкам======================
-# Максимальное количество участников в зависимости от типа комнаты
-ROOM_TYPE_TO_MAX_MEMBERS_MAP: dict[RoomType, int] = {
-    RoomType.DIRECT: DEFAULT_DIRECT_MEMBERS,
-    RoomType.CHANNEL: DEFAULT_CHANNEL_MEMBERS,
-    RoomType.GROUP: DEFAULT_GROUP_MEMBERS,
-}
-# Дефолтная роль пользователя в зависимости от типа комнаты
-ROOM_TYPE_TO_SYSTEM_ROLE_MAP: dict[RoomType, SystemRole] = {
-    RoomType.DIRECT: SystemRole.MEMBER,
-    RoomType.GROUP: SystemRole.MEMBER,
-    RoomType.CHANNEL: SystemRole.GUEST,
-}
+    room_type_to_max_members_map: dict[RoomType, int] = {
+        RoomType.DIRECT: DEFAULT_DIRECT_MEMBERS,
+        RoomType.CHANNEL: DEFAULT_CHANNEL_MEMBERS,
+        RoomType.GROUP: DEFAULT_GROUP_MEMBERS,
+    }
+    return room_type_to_max_members_map[room_type]
+
+
+def get_default_system_role_by_room(room_type: RoomType) -> SystemRole:
+    """Получение системной роли по умолчанию для присоединившегося участника комнаты.
+
+    :param room_type: Тип комнаты.
+    """
+    from .value_objects import SystemRole  # noqa: PLC0415
+
+    room_type_to_default_system_role_map: dict[RoomType, SystemRole] = {
+        RoomType.DIRECT: SystemRole.MEMBER,
+        RoomType.GROUP: SystemRole.MEMBER,
+        RoomType.CHANNEL: SystemRole.GUEST,
+    }
+    return room_type_to_default_system_role_map[room_type]
 
 
 def configure_default_room_settings(
@@ -75,6 +58,13 @@ def configure_default_room_settings(
     :param visibility: Видимость комнаты.
     :return Сконфигурированные настройки комнаты.
     """
+    from .value_objects import (  # noqa: PLC0415
+        JoinPermission,
+        RoomMediaSettings,
+        RoomMembersSettings,
+        RoomMessagesSettings,
+    )
+
     join_permission = (
         JoinPermission.APPROVAL if visibility == RoomVisibility.PRIVATE else JoinPermission.OPEN
     )
@@ -83,7 +73,7 @@ def configure_default_room_settings(
             allow_forwarding=not RoomVisibility.PRIVATE,
         ),
         members=RoomMembersSettings(
-            max_members=ROOM_TYPE_TO_MAX_MEMBERS_MAP[room_type],
+            max_members=get_max_members_by_room(room_type),
             join_permission=join_permission
         ),
         media=RoomMediaSettings(),
