@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from ..domain.value_objects import (
+    Id,
     MemberStatus,
     Name,
     Nickname,
@@ -19,6 +20,7 @@ class _DTO(BaseModel, ABC):
 
 class MemberCreate(_DTO):
     """Необходимые данные для создания участника"""
+    id: Id
     user_id: UUID
     room_id: UUID
     role_id: UUID

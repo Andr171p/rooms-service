@@ -1,9 +1,21 @@
+from abc import ABC
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from .entities import Permission, Role
-from .value_objects import PermissionCode
+from .events import EventT
+from .value_objects import Id, PermissionCode
+
+
+class AggregateRoot(BaseModel, ABC):
+    id: Id
+    _events: list[EventT] = Field(default_factory=list, exclude=True)
+    _version: str = Field(default="0.1.0", exclude=True)
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, validate_assignment=True, frozen=False
+    )
 
 
 class RoomRole(BaseModel):

@@ -9,7 +9,7 @@ from .constants import SOURCE
 from .rules import current_datetime
 from .value_objects import CorrelationId, CurrentDatetime, EventStatus, EventType, Id
 
-PayloadType = TypeVar("PayloadType", bound=BaseModel)
+PayloadT = TypeVar("PayloadT", bound=BaseModel)
 
 
 def generate_correlation_id(source: str = SOURCE) -> str:
@@ -36,14 +36,17 @@ class Event(BaseModel):
     type: EventType
     status: EventStatus
     source: str = SOURCE
-    payload: PayloadType
+    payload: PayloadT
     correlation_id: DefaultCorrelationId
     created_at: CurrentDatetime
 
     model_config = ConfigDict(from_attributes=True, frozen=True)
 
 
-class OutboxEvent(BaseModel):
+EventT = TypeVar("EventT", bound=Event)
+
+
+class OutboxEvent(Event):
     """Модель события для реализации Outbox паттерна.
 
     Attributes:

@@ -27,4 +27,6 @@ class CreateRoomUseCase:
                 "created_by": created_by,
                 "members": initial_members[::-1]  # Owner в начале списка
             })
-            return await self._uow.room_repository.create(room_create)
+            created_room = await self._uow.room_repository.create(room_create)
+            await self._uow.commit()
+        return created_room
