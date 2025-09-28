@@ -4,9 +4,9 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from ..domain.value_objects import (
-    CurrentDatetime,
     MemberStatus,
     Name,
+    Nickname,
     RoomType,
     RoomVisibility,
     Slug,
@@ -22,8 +22,15 @@ class MemberCreate(_DTO):
     user_id: UUID
     room_id: UUID
     role_id: UUID
+    nickname: Nickname
     status: MemberStatus = MemberStatus.ACTIVE
-    joined_at: CurrentDatetime
+
+
+class InitialMember(_DTO):
+    user_id: UUID
+    role_id: UUID
+    nickname: Nickname | None = None
+    status: MemberStatus = MemberStatus.ACTIVE
 
 
 class RoomCreate(_DTO):
@@ -43,4 +50,4 @@ class RoomCreate(_DTO):
     slug: Slug
     type: RoomType
     visibility: RoomVisibility
-    members: list[MemberCreate]
+    members: list[InitialMember]

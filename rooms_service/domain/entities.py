@@ -13,6 +13,7 @@ from .value_objects import (
     Id,
     MemberStatus,
     Name,
+    Nickname,
     PermissionCode,
     RolePriority,
     RoleType,
@@ -35,7 +36,6 @@ class Room(_Entity):
     Attributes:
         created_by: Идентификатор пользователя создавшего комнату.
         type: Тип комнаты: channel, group, ...
-        avatar_url: URL аватарки комнаты.
         name: Имя комнаты.
         slug: Человеко-читаемый ID для URL.
         visibility: Область видимости комнаты.
@@ -43,7 +43,6 @@ class Room(_Entity):
     """
     created_by: UUID
     type: RoomType
-    avatar_url: str | None = None
     name: Name | None = None
     slug: Slug | None = None
     visibility: RoomVisibility = RoomVisibility.PUBLIC
@@ -75,6 +74,7 @@ class Member(_Entity):
     user_id: UUID
     room_id: UUID
     role: Role
+    nickname: Nickname
     status: MemberStatus = MemberStatus.ACTIVE
     joined_at: CurrentDatetime
 
@@ -98,7 +98,7 @@ class Permission(_Entity):
     """Права и привилегии участника.
 
     Attributes:
-        code: Код привилегии для разработчиков: messages:send, messages:edit, members:delete ...
+        code: Код привилегии для разработчиков: message:send, message:edit, member:delete ...
         category: Ресурс к которому выдаётся привилегия.
     """
     code: PermissionCode

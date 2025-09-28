@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..core.base import MemberRepository, RoleRepository, RoomRepository
 from ..core.constants import MemberPermissionStatus
 from ..core.domain import Member, Permission, Role, Room
-from ..core.dto import RolePermission
+# from ..core.dto import RolePermission
 from ..core.exceptions import (
     ConflictError,
     CreationError,
@@ -93,7 +93,7 @@ class SQLCRUDRepository[ModelT: Base, SchemaT: BaseModel]:
         else:
             return result.rowcount > 0
 
-
+'''
 class SQLRoomRepository(SQLCRUDRepository[RoomModel, Room], RoomRepository):
     model = RoomModel
     schema = Room
@@ -235,3 +235,4 @@ class SQLRoleRepository(SQLCRUDRepository[RoleModel, Role], RoleRepository):
             return [Permission.model_validate(model) for model in models]
         except SQLAlchemyError as e:
             raise ReadingError(f"Error while reading: {e}") from e
+'''

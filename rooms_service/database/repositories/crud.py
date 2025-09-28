@@ -7,7 +7,9 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...core.exceptions import (
+from ...application.repositories import CRUDRepository
+from ...domain.entities import Role
+from ...domain.exceptions import (
     ConflictError,
     CreationError,
     DeletionError,
@@ -15,32 +17,17 @@ from ...core.exceptions import (
     UpdateError,
 )
 from ..base import Base
+from ..models import RoleModel
 
 ModelT = TypeVar("ModelT", bound=Base)
 EntityT = TypeVar("EntityT", bound=BaseModel)
 
 
-class SQLCRUDRepository[ModelT: Base, EntityT: BaseModel]:
+class SQLReadableRepository[ModelT: Base, EntityT: BaseModel]:
     model: type[ModelT]
     entity: type[EntityT]
 
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, entity: EntityT) -> EntityT:
-        try:
-            stmt = insert(self.model).values(**entity.model_dump()).returning(self.model)
-            result = await self.session.execute(stmt)
-            created_model = result.scalar_one()
-            return self.entity.model_validate(created_model)
-        except IntegrityError as e:
-            raise ConflictError(
-                f"Creation of {self.entity.__name__.lower()} failed due data conflict error: {e}"
-            ) from e
-        except SQLAlchemyError as e:
-            raise CreationError(
-                f"Error occurred while {self.entity.__name__.lower()} creation, error: {e}"
-            ) from e
+    session: "AsyncSession"
 
     async def read(self, id: UUID) -> EntityT | None:  # noqa: A002
         try:
@@ -65,6 +52,29 @@ class SQLCRUDRepository[ModelT: Base, EntityT: BaseModel]:
             raise ReadingError(
                 f"Error occurred while reading all {self.entity.__name__.lower()}s "
                 f"by limit {limit}, page {page}, error: {e}"
+            ) from e
+
+
+class SQLCRUDRepository[ModelT: Base, EntityT: BaseModel](SQLReadableRepository[ModelT, EntityT]):
+    model: type[ModelT]
+    entity: type[EntityT]
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, entity: EntityT) -> EntityT:
+        try:
+            stmt = insert(self.model).values(**entity.model_dump()).returning(self.model)
+            result = await self.session.execute(stmt)
+            created_model = result.scalar_one()
+            return self.entity.model_validate(created_model)
+        except IntegrityError as e:
+            raise ConflictError(
+                f"Creation of {self.entity.__name__.lower()} failed due data conflict error: {e}"
+            ) from e
+        except SQLAlchemyError as e:
+            raise CreationError(
+                f"Error occurred while {self.entity.__name__.lower()} creation, error: {e}"
             ) from e
 
     async def update(self, id: UUID, **kwargs) -> EntityT | None:  # noqa: A002
@@ -95,3 +105,8 @@ class SQLCRUDRepository[ModelT: Base, EntityT: BaseModel]:
             ) from e
         else:
             return result.rowcount > 0
+
+
+class SQLRoleRepository(SQLCRUDRepository[RoleModel, Role], CRUDRepository[Role]):
+    model = RoleModel
+    entity = Role

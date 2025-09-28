@@ -4,7 +4,6 @@ from fastapi import APIRouter, status
 from fastauth import CurrentUser
 
 from ...application.commands import CreateRoomCommand
-from ...application.dto import RoomCreate
 from ...application.usecases import CreateRoomUseCase
 from ...domain.entities import Room
 
@@ -22,6 +21,4 @@ async def create_room(
         current_user: CurrentUser,
         usecase: Depends[CreateRoomUseCase],
 ) -> Room:
-    return await usecase.execute(RoomCreate.model_validate(
-        {**command.model_dump(), "created_by": current_user.x_user_id}
-    ))
+    return await usecase.execute(command, created_by=current_user.x_user_id)

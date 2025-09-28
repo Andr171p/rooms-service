@@ -56,7 +56,7 @@ class MemberModel(Base):
     room: Mapped["RoomModel"] = relationship(back_populates="members")
     role: Mapped["RoleModel"] = relationship(back_populates="member")
     member_permissions: Mapped[list["MemberPermissionModel"]] = relationship(
-        back_populates="member", cascade="all, delete-orphan"
+        back_populates="member"
     )
 
     __table_args__ = (UniqueConstraint(
@@ -72,7 +72,6 @@ class RoomRoleModel(Base):
 
     room: Mapped["RoomModel"] = relationship(back_populates="room_roles")
     role: Mapped["RoleModel"] = relationship(back_populates="room_roles")
-    members: Mapped[list["MemberModel"]] = relationship(back_populates="room_role")
 
     __table_args__ = (
         UniqueConstraint("room_id", "role_id", name="unique_room_role"),
@@ -83,15 +82,19 @@ class RoleModel(Base):
     __tablename__ = "roles"
 
     type: Mapped[str]
-    name: Mapped[StrUnique]
+    name: Mapped[str]
     description: Mapped[TextNullable]
     priority: Mapped[int]
 
     role_permissions: Mapped[list["RolePermissionModel"]] = relationship(
         back_populates="role", cascade="all, delete-orphan"
     )
-    room_roles: Mapped[list["RoomRoleModel"]] = relationship(back_populates="role")
-    member: Mapped["MemberModel"] = relationship(back_populates="role")
+    room_roles: Mapped[list["RoomRoleModel"]] = relationship(
+        back_populates="role", cascade="all, delete-orphan"
+    )
+    members: Mapped[list["MemberModel"]] = relationship(
+        back_populates="role", cascade="all, delete-orphan"
+    )
 
 
 class PermissionModel(Base):
@@ -103,9 +106,7 @@ class PermissionModel(Base):
     role_permissions: Mapped[list["RolePermissionModel"]] = relationship(
         back_populates="permission", cascade="all, delete-orphan"
     )
-    member_permissions: Mapped[list["MemberPermissionModel"]] = relationship(
-        back_populates="permission", cascade="all, delete-orphan"
-    )
+    member_permission: Mapped["MemberPermissionModel"] = relationship(back_populates="permission")
 
 
 class RolePermissionModel(Base):
@@ -125,13 +126,13 @@ class RolePermissionModel(Base):
 class MemberPermissionModel(Base):
     __tablename__ = "member_permissions"
 
-    member_id: Mapped[UUID] = mapped_column(ForeignKey("members.id"), unique=True)
-    permission_code: Mapped[str] = mapped_column(ForeignKey("permissions.code"), unique=False)
+    member_id: Mapped[UUID] = mapped_column(ForeignKey("members.id"), unique=False)
+    permission_id: Mapped[str] = mapped_column(ForeignKey("permissions.id"), unique=False)
     status: Mapped[str] = mapped_column(default="grant")
 
     member: Mapped["MemberModel"] = relationship(back_populates="member_permissions")
     permission: Mapped["PermissionModel"] = relationship(back_populates="member_permissions")
 
     __table_args__ = (
-        UniqueConstraint("member_id", "permission_code", name="unique_member_permission"),
+        UniqueConstraint("member_id", "permission_id", name="unique_member_permission"),
     )

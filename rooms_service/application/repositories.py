@@ -10,8 +10,8 @@ from pydantic import BaseModel, PositiveInt
 
 from ..domain.aggragates import RoomRole
 from ..domain.entities import Member, Role, Room
-from ..domain.value_objects import MemberIdentity, Name
-from .dto import MemberCreate
+from ..domain.value_objects import MemberIdentity, Name, SystemRole
+from .dto import MemberCreate, RoomCreate
 
 EntityT = TypeVar("EntityT", bound=BaseModel)
 
@@ -48,28 +48,46 @@ class UnitOfWork(ABC):
 
 
 class ReadableRepository(Protocol[EntityT]):
+    @abstractmethod
     async def read(self, id: UUID) -> EntityT | None: pass  # noqa: A002
 
+    @abstractmethod
     async def read_all(self, limit: PositiveInt, page: PositiveInt) -> list[EntityT]: pass
 
 
 class CRUDRepository(ReadableRepository[EntityT], Protocol[EntityT]):
+    @abstractmethod
     async def create(self, entity: EntityT) -> EntityT: pass
 
+    @abstractmethod
     async def update(self, id: UUID, **kwargs) -> EntityT | None: pass  # noqa: A002
 
+    @abstractmethod
     async def delete(self, id: UUID) -> bool: pass  # noqa: A002
 
 
-class RoomRepository(CRUDRepository[Room]):
+class RoleRepository(CRUDRepository[Role]):
+    @abstractmethod
+    async def get_system(self, name: SystemRole) -> Role:
+        """Получение системной роли по её уникальной комбинации атрибутов"""
+
+
+class RoomRepository(ReadableRepository[Room]):
+    @abstractmethod
+    async def create(self, room: RoomCreate) -> Room:
+        """Создание комнаты"""
+
     @abstractmethod
     async def get_members(self, id: UUID, limit: PositiveInt, page: PositiveInt) -> list[Member]:  # noqa: A002
         """Получает участников комнаты"""
 
+    @abstractmethod
+    async def get_role(self, id: UUID, role_name: Name) -> RoomRole | None:  # noqa: A002
+        """Получает комнатную роль"""
 
-class RoleRepository(CRUDRepository[Role]):
-    async def get_by_name(self, name: Name) -> Role | None:
-        """Получает роль по её уникальному имени"""
+    @abstractmethod
+    async def get_roles(self, id: UUID) -> list[RoomRole]:  # noqa: A002
+        """Получает все роли доступные внутри комнаты"""
 
 
 class MemberRepository(Protocol):

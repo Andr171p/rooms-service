@@ -19,19 +19,18 @@ from .repository import SQLCRUDRepository
 class OutboxEventModel(Base):
     __tablename__ = "outbox_events"
 
-    event_id: Mapped[PostgresUUID]
     aggregate_type: Mapped[str]
     aggregate_id: Mapped[PostgresUUID]
-    event_type: Mapped[str]
+    type: Mapped[str]
     payload: Mapped[JsonDict]
-    event_status: Mapped[str]
+    status: Mapped[str]
     retries: Mapped[int]
     dedup_key: Mapped[str]
     partition_key: Mapped[str]
 
     __table_args__ = (
         Index(
-            "outbox_index", "event_status", "aggregate_id", "dedup_key", "partition_key"
+            "outbox_index", "status", "aggregate_id", "dedup_key", "partition_key"
         ),
     )
 
@@ -51,7 +50,7 @@ class SQLOutboxRepository(SQLCRUDRepository[OutboxEventModel, OutboxEvent], Outb
 
     async def get_count_by_status(self, event_statuses: Sequence[EventStatus]) -> int:
         try:
-            stmt = select(func.count()).where(self.model.event_status.in_(event_statuses))
+            stmt = select(func.count()).where(self.model.status.in_(event_statuses))
             result = await self.session.execute(stmt)
             return result.scalar()
         except SQLAlchemyError as e:
@@ -66,7 +65,7 @@ class SQLOutboxRepository(SQLCRUDRepository[OutboxEventModel, OutboxEvent], Outb
             offset = (page - 1) * limit
             stmt = (
                 select(self.model)
-                .where(self.model.event_status.in_(event_statuses))
+                .where(self.model.status.in_(event_statuses))
                 .order_by(self.model.created_at)
                 .offset(offset)
                 .limit(limit)
@@ -87,7 +86,7 @@ class SQLOutboxRepository(SQLCRUDRepository[OutboxEventModel, OutboxEvent], Outb
             for id, kwargs in zip(ids, args, strict=False):  # noqa: A001
                 stmt = (
                     update(self.model)
-                    .where(self.model.event_id == id)
+                    .where(self.model.id == id)
                     .values(kwargs, retries=self.model.retries + retries_counter)
                 )
                 await self.session.execute(stmt)

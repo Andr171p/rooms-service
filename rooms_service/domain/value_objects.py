@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Self
 
+import re
 from collections import UserString
 from collections.abc import Callable
 from datetime import datetime
@@ -18,16 +19,11 @@ from .constants import (
     MAX_ADMINS,
     MAX_MEDIA_SIZE,
     MAX_MEMBERS,
-    MAX_NAME_LENGTH,
     MAX_PINNED_MESSAGES,
-    MAX_ROLE_PRIORITY,
     MIN_ADMINS,
     MIN_MEDIA_SIZE,
     MIN_MEMBERS,
-    MIN_NAME_LENGTH,
-    MIN_PERMISSION_CODE_PARTS,
     MIN_PINNED_MESSAGES,
-    MIN_ROLE_PRIORITY,
     UNLIMITED_MEDIA_FORMATS,
 )
 from .rules import current_datetime
@@ -138,11 +134,14 @@ class _IntPrimitiveValidator(int):
 
 class RolePriority(_IntPrimitiveValidator):
     """Тип для валидации приоритета роли"""
+
+    MIN_PRIORITY, MAX_PRIORITY = 1, 100
+
     @classmethod
     def validate(cls, value: int, *args, **kwargs) -> int:  # noqa: ARG003
-        if not (MIN_ROLE_PRIORITY <= value <= MAX_ROLE_PRIORITY):
+        if not (cls.MIN_PRIORITY <= value <= cls.MAX_PRIORITY):
             raise ValueError(
-                f"Priority must be between {MIN_ROLE_PRIORITY} and {MAX_ROLE_PRIORITY}! "
+                f"Priority must be between {cls.MIN_PRIORITY} and {cls.MAX_PRIORITY}! "
                 f"Invalid value: {value}"
             )
         return value
@@ -172,6 +171,8 @@ class _StrPrimitiveValidator(UserString):
 class PermissionCode(_StrPrimitiveValidator):
     """Строка для валидации кода привилегий."""
 
+    MIN_CODE_PARTS = 2
+
     @classmethod
     def validate(cls, code: str) -> str:
         if ":" not in code:
@@ -182,7 +183,7 @@ class PermissionCode(_StrPrimitiveValidator):
             )
         code_parts: list[str] = code.split(":")
         no_empty_code_parts: list[str] = [code_part for code_part in code_parts if code_part]
-        if len(no_empty_code_parts) < MIN_PERMISSION_CODE_PARTS:
+        if len(no_empty_code_parts) < cls.MIN_CODE_PARTS:
             raise ValueError("Invalid permission code! Not enough no empty parts.")
         return code
 
@@ -190,20 +191,28 @@ class PermissionCode(_StrPrimitiveValidator):
 class Name(_StrPrimitiveValidator):
     """Строка для валидации имени сущности"""
 
+    MIN_LENGTH, MAX_LENGTH = 1, 100
+
     @classmethod
     def validate(cls, name: str) -> str:
-        if not (MIN_NAME_LENGTH <= len(name) <= MAX_NAME_LENGTH):
-            raise ValueError("Name length must be between 1 and 100 characters!")
+        if not (cls.MIN_LENGTH <= len(name) <= cls.MAX_LENGTH):
+            raise ValueError(
+                f"Name length must be between {cls.MIN_LENGTH} and {cls.MAX_LENGTH} characters!"
+            )
         return name
 
 
 class Slug(_StrPrimitiveValidator):
     """Строка для валидации псевдонима сущности"""
 
+    MIN_LENGTH, MAX_LENGTH = 1, 100
+
     @classmethod
     def validate(cls, slug: str) -> str:
-        if not (MIN_NAME_LENGTH <= len(slug) <= MAX_NAME_LENGTH):
-            raise ValueError("Name length must be between 1 and 100 characters!")
+        if not (cls.MIN_LENGTH <= len(slug) <= cls.MAX_LENGTH):
+            raise ValueError(
+                f"Name length must be between {cls.MIN_LENGTH} and {cls.MAX_LENGTH} characters!"
+            )
         return slug.lower()
 
 
@@ -239,6 +248,44 @@ class EventType(_StrPrimitiveValidator):
         if len(event_type.split("_")) < cls.EVENT_TYPE_PARTS:
             raise ValueError("Event type must have at least two characters!")
         return event_type
+
+
+class Nickname(_StrPrimitiveValidator):
+    """Примитив для никнейма участника комнаты.
+
+     Правила валидации:
+         - Длина: от 2 до 32 символов.
+         - Допустимые символы: буквы (латиница, кириллица), цифры, подчёркивания, дефисы.
+         - Не может состоять только из цифр.
+         - Не может содержать пробелы.
+         - Тримминг пробелов по краям.
+    """
+    MIN_LENGTH, MAX_LENGTH = 2, 32
+    PATTERN = r"^[a-zA-Za-яА-ЯёЁ0-9_-]+$"
+    BANNED_CHARS = "@&"
+
+    @classmethod
+    def validate(cls, nickname: str) -> str:
+        nickname = nickname.strip()
+        if not (cls.MIN_LENGTH <= len(nickname) <= cls.MAX_LENGTH):
+            raise ValueError(
+                f"Nickname length must be between {cls.MIN_LENGTH} "
+                f"and {cls.MAX_LENGTH} characters!"
+            )
+        if nickname.isdigit():
+            raise ValueError("Nickname must not consist only of numbers!")
+        for char in nickname:
+            if char in cls.BANNED_CHARS:
+                raise ValueError(
+                    f"Nickname must not contain banned character: '{char}'! "
+                    f"Banned characters: '{cls.BANNED_CHARS}'"
+                )
+        # Проверка допустимых символов:
+        if not re.match(cls.PATTERN, nickname):
+            raise ValueError(
+                "Nickname can only contain letters, numbers, underscores and hyphens!"
+            )
+        return nickname
 
 
 class RoomSettings(BaseModel):
