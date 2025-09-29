@@ -1,6 +1,11 @@
-from rooms_service.application.dto import SystemRoleRead
-from rooms_service.domain.value_objects import RoleType
+from pydantic import BaseModel
 
-dto = SystemRoleRead(name="admin")
 
-print(dto)
+class TestModel(BaseModel):
+    number: int
+    text: str = ""
+
+
+model = TestModel.model_validate(number=4)
+
+print(model)

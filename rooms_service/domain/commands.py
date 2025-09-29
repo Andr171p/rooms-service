@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from ..domain.value_objects import Name, RoomType, RoomVisibility, Slug
+from .value_objects import Name, RoomType, RoomVisibility, Slug
 
 
 class Command(BaseModel, ABC):

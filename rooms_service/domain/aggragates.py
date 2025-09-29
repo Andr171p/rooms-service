@@ -1,11 +1,24 @@
+from typing import Self
+
 from abc import ABC
+from collections.abc import Iterator
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
+from .commands import CreateRoomCommand
 from .entities import Permission, Role
-from .events import EventT
-from .value_objects import Id, PermissionCode
+from .events import Event, EventT, RoomCreated
+from .value_objects import (
+    CurrentDatetime,
+    EventStatus,
+    Id,
+    Name,
+    PermissionCode,
+    RoomType,
+    RoomVisibility,
+    Slug,
+)
 
 
 class AggregateRoot(BaseModel, ABC):
@@ -16,6 +29,45 @@ class AggregateRoot(BaseModel, ABC):
     model_config = ConfigDict(
         arbitrary_types_allowed=True, validate_assignment=True, frozen=False
     )
+
+    def _register_event(self, event: EventT) -> None:
+        self._events.append(event)
+
+    def collect_events(self) -> Iterator[EventT]:
+        """Собирает и возвращает все накопленные события"""
+        while self._events:
+            yield self._events.pop(0)
+
+
+class Room(AggregateRoot):
+    created_by: UUID
+    type: RoomType
+    name: Name | None = None
+    slug: Slug | None = None
+    visibility: RoomVisibility = RoomVisibility.PUBLIC
+    created_at: CurrentDatetime
+    members_count: NonNegativeInt
+
+    @classmethod
+    def create(cls, command: CreateRoomCommand, created_by: UUID) -> Self:
+        room = cls(
+            created_by=created_by,
+            type=command.type,
+            name=command.name,
+            slug=command.slug,
+            visibility=command.visibility,
+            members_count=len(command.initial_users) + 1
+        )
+        room_created_event = Event(
+            type="room_created",
+            status=EventStatus.NEW,
+            payload=RoomCreated.model_validate(room)
+        )
+        cls._register_event(room_created_event)
+        return ...
+
+    def add_member(self, member: ...) -> ...:
+        ...
 
 
 class RoomRole(BaseModel):

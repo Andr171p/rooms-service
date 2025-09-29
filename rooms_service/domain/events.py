@@ -7,7 +7,18 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, computed_fiel
 
 from .constants import SOURCE
 from .rules import current_datetime
-from .value_objects import CorrelationId, CurrentDatetime, EventStatus, EventType, Id
+from .value_objects import (
+    CorrelationId,
+    CurrentDatetime,
+    EventStatus,
+    EventType,
+    Id,
+    Name,
+    RoomSettings,
+    RoomType,
+    RoomVisibility,
+    Slug,
+)
 
 PayloadT = TypeVar("PayloadT", bound=BaseModel)
 
@@ -65,3 +76,15 @@ class OutboxEvent(Event):
     @computed_field(description="Гарантия порядка обработки события для одного агрегата")
     def partition_key(self) -> str:
         return f"{self.aggregate_type}--{self.aggregate_id}"
+
+
+class RoomCreated(BaseModel):
+    id: UUID
+    created_by: UUID
+    type: RoomType
+    name: Name | None = None
+    slug: Slug | None = None
+    visibility: RoomVisibility = RoomVisibility.PUBLIC
+    created_at: CurrentDatetime
+    settings: RoomSettings
+    members_count: NonNegativeInt

@@ -3,7 +3,7 @@ from dishka.integrations.fastapi import FromDishka as Depends
 from fastapi import APIRouter, status
 from fastauth import CurrentUser
 
-from ...application.commands import CreateRoomCommand
+from rooms_service.domain.commands import CreateRoomCommand
 from ...application.usecases import CreateRoomUseCase
 from ...domain.entities import Room
 

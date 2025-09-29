@@ -3,7 +3,7 @@ from uuid import UUID
 from ..domain.entities import Room
 from ..domain.rules import get_default_system_role_by_room
 from ..domain.value_objects import SystemRole
-from .commands import CreateRoomCommand
+from rooms_service.domain.commands import CreateRoomCommand
 from .dto import InitialMember, RoomCreate
 from .repositories import UnitOfWork
 
