@@ -84,7 +84,8 @@ class RoomCreated(BaseModel):
     type: RoomType
     name: Name | None = None
     slug: Slug | None = None
-    visibility: RoomVisibility = RoomVisibility.PUBLIC
+    visibility: RoomVisibility
     created_at: CurrentDatetime
     settings: RoomSettings
-    members_count: NonNegativeInt
+    member_count: NonNegativeInt
+    initial_users: list[UUID]

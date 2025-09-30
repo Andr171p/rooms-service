@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
-    from .value_objects import RoomSettings, RoomType, RoomVisibility, SystemRole
+    from .value_objects import PermissionCode, RoomSettings, RoomType, RoomVisibility, SystemRole
 
 from datetime import datetime
 
@@ -78,3 +78,30 @@ def configure_default_room_settings(
         ),
         media=RoomMediaSettings(),
     )
+
+
+# Права для гостя
+GUEST_PERMISSIONS: Final[set[PermissionCode]] = {
+    PermissionCode("message:read"),
+    PermissionCode("message:react"),
+}
+# Права участника
+MEMBER_PERMISSIONS: Final[set[PermissionCode]] = GUEST_PERMISSIONS | {
+    PermissionCode("message:send"),
+    PermissionCode("message:pin"),
+    PermissionCode("media:send"),
+    PermissionCode("member:add"),
+}
+# Права админа
+ADMIN_PERMISSIONS: Final[set[PermissionCode]] = MEMBER_PERMISSIONS | {
+    PermissionCode("member:ban"),
+    PermissionCode("member:kick"),
+    PermissionCode("member:mute"),
+    PermissionCode("member:invite"),
+}
+# Права для владельца ('owner')
+OWNER_PERMISSIONS: Final[set[PermissionCode]] = {
+    PermissionCode("room:manage"),
+    PermissionCode("role:manage"),
+    PermissionCode("role:create"),
+}

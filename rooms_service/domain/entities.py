@@ -92,6 +92,7 @@ class Role(_Entity):
     name: Name
     description: str
     priority: RolePriority
+    permissions: list[Permission]
 
 
 class Permission(_Entity):

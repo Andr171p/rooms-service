@@ -1,114 +1,20 @@
-from __future__ import annotations
-
 from typing import Annotated, Any, Self
 
 import re
 from collections import UserString
 from collections.abc import Callable
 from datetime import datetime
-from enum import StrEnum
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 from pydantic_core import CoreSchema, core_schema
 
-from .constants import (
-    DEFAULT_ADMINS,
-    DEFAULT_MEDIA_SIZE,
-    DEFAULT_PINNED_MESSAGES,
-    MAX_ADMINS,
-    MAX_MEDIA_SIZE,
-    MAX_MEMBERS,
-    MAX_PINNED_MESSAGES,
-    MIN_ADMINS,
-    MIN_MEDIA_SIZE,
-    MIN_MEMBERS,
-    MIN_PINNED_MESSAGES,
-    UNLIMITED_MEDIA_FORMATS,
-)
-from .rules import current_datetime
+from ..rules import current_datetime
 
 # Уникальный UUID идентификатор
 Id = Annotated[UUID, Field(default_factory=uuid4)]
 # Текущее время
 CurrentDatetime = Annotated[datetime, Field(default_factory=current_datetime)]
-
-
-class EventStatus(StrEnum):
-    """Статусы жизненного цикла события"""
-    NEW = "new"
-    PENDING = "pending"
-    DONE = "done"
-    FAILED = "failed"
-
-
-class RoomType(StrEnum):
-    """Тип комнаты (чата)"""
-    DIRECT = "direct"  # Личный чат one to one
-    GROUP = "group"  # Групповой чат
-    CHANNEL = "channel"  # Канал: новости, блог и.т.д
-
-
-class RoomVisibility(StrEnum):
-    """Видимость комнаты для других пользователей"""
-    PRIVATE = "private"
-    PUBLIC = "public"
-    DELETED = "deleted"
-    BANNED = "banned"
-
-
-class MemberStatus(StrEnum):
-    """Статус участника"""
-    ACTIVE = "active"  # Может полноценно использовать разрешённый ему функционал
-    MUTED = "muted"  # Не может писать и взаимодействовать с сообщениями
-    BANNED = "banned"  # Не может ни взаимодействовать, ни читать контент
-
-
-class SystemRole(StrEnum):
-    """Системные роли участника комнаты"""
-    OWNER = "owner"          # Владелец комнаты, самые высокие привилегии
-    ADMIN = "admin"          # Администратор, может управлять участниками + привилегии модератора
-    MODERATOR = "moderator"  # Модератор, может удалять и управлять сообщениями
-    MEMBER = "member"        # Участник, может взаимодействовать с сообщениями
-    GUEST = "guest"          # Гость
-    READER = "reader"        # Читатель, может только просматривать сообщения
-    BOT = "bot"              # Бот
-
-
-class RoleType(StrEnum):
-    """Тип роли участника"""
-    SYSTEM = "system"  # Системная роль, не подлежит изменениям
-    CUSTOM = "custom"  # Роль, которую может создать пользователь
-
-
-class MediaType(StrEnum):
-    """Возможные типы медиа контента"""
-    IMAGE = "image"
-    VIDEO = "video"
-    DOCUMENT = "document"
-    AUDIO = "audio"
-    STICKER = "sticker"
-
-
-class JoinPermission(StrEnum):
-    """Правила присоединения новых участников"""
-    OPEN = "open"
-    APPROVAL = "approval"
-    INVITE_ONLY = "invite_only"
-
-
-class InvitationStatus(StrEnum):
-    """Статус отправленного приглашения в комнату"""
-    PENDING = "pending"
-    ACCEPTED = "accepted"
-    REJECTED = "rejected"
-    EXPIRED = "expired"
-
-
-class MemberPermissionStatus(StrEnum):
-    """Статус права для участника"""
-    GRANT = "grant"
-    DENY = "deny"
 
 
 class _IntPrimitiveValidator(int):
@@ -286,46 +192,3 @@ class Nickname(_StrPrimitiveValidator):
                 "Nickname can only contain letters, numbers, underscores and hyphens!"
             )
         return nickname
-
-
-class RoomSettings(BaseModel):
-    """Настройки комнаты, настраиваемые разделы:
-     - участники
-     - сообщения
-     - медиа
-    """
-    members: RoomMembersSettings
-    messages: RoomMessagesSettings
-    media: RoomMediaSettings
-
-
-class RoomMessagesSettings(BaseModel):
-    allow_forwarding: bool = True
-    history_visibility_for_new_members: bool = True
-    pinned_limit: int = Field(
-        default=DEFAULT_PINNED_MESSAGES,
-        ge=MIN_PINNED_MESSAGES,
-        le=MAX_PINNED_MESSAGES
-    )
-    profanity_filter: bool = False
-    forbidden_words: list[str] = Field(default_factory=list)
-
-
-class RoomMembersSettings(BaseModel):
-    max_members: int = Field(ge=MIN_MEMBERS, le=MAX_MEMBERS)
-    max_admins: int = Field(default=DEFAULT_ADMINS, ge=MIN_ADMINS, le=MAX_ADMINS)
-    join_permission: JoinPermission = JoinPermission.OPEN
-
-
-class RoomMediaSettings(BaseModel):
-    allow_media: bool = True
-    max_size: int = Field(default=DEFAULT_MEDIA_SIZE, ge=MIN_MEDIA_SIZE, le=MAX_MEDIA_SIZE)
-    allowed_types: list[str] = Field(default=list(MediaType))
-    allowed_formats: list[str] = Field(default=UNLIMITED_MEDIA_FORMATS)
-
-
-class MemberIdentity(BaseModel):
-    room_id: UUID
-    user_id: UUID
-
-    model_config = ConfigDict(frozen=True)

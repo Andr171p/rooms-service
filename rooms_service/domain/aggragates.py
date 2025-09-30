@@ -8,13 +8,21 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from .commands import CreateRoomCommand
 from .entities import Permission, Role
-from .events import Event, EventT, RoomCreated
+from .events import Event, EventT, PayloadT, RoomCreated
+from .rules import (
+    GUEST_PERMISSIONS,
+    MEMBER_PERMISSIONS,
+    OWNER_PERMISSIONS,
+    configure_default_room_settings,
+)
 from .value_objects import (
     CurrentDatetime,
     EventStatus,
+    EventType,
     Id,
     Name,
     PermissionCode,
+    RoomSettings,
     RoomType,
     RoomVisibility,
     Slug,
@@ -30,8 +38,10 @@ class AggregateRoot(BaseModel, ABC):
         arbitrary_types_allowed=True, validate_assignment=True, frozen=False
     )
 
-    def _register_event(self, event: EventT) -> None:
-        self._events.append(event)
+    def _register_event(self, type: EventType, payload: PayloadT) -> None:  # noqa: A002
+        self._events.append(Event.model_validate({
+            "type": type, "status": EventStatus.NEW, "payload": payload
+        }))
 
     def collect_events(self) -> Iterator[EventT]:
         """Собирает и возвращает все накопленные события"""
@@ -44,9 +54,10 @@ class Room(AggregateRoot):
     type: RoomType
     name: Name | None = None
     slug: Slug | None = None
-    visibility: RoomVisibility = RoomVisibility.PUBLIC
+    visibility: RoomVisibility
     created_at: CurrentDatetime
-    members_count: NonNegativeInt
+    member_count: NonNegativeInt
+    settings: RoomSettings
 
     @classmethod
     def create(cls, command: CreateRoomCommand, created_by: UUID) -> Self:
@@ -56,15 +67,29 @@ class Room(AggregateRoot):
             name=command.name,
             slug=command.slug,
             visibility=command.visibility,
-            members_count=len(command.initial_users) + 1
+            members_count=len(command.initial_users) + 1,
+            settings=configure_default_room_settings(command.type, command.visibility),
         )
-        room_created_event = Event(
+        cls._register_event(
             type="room_created",
-            status=EventStatus.NEW,
-            payload=RoomCreated.model_validate(room)
+            payload=RoomCreated.model_validate({
+                **room.model_dump(),
+                "initial_users": command.initial_users,
+                "roles": ...,
+            })
         )
-        cls._register_event(room_created_event)
         return ...
+
+    @classmethod
+    def _define_roles(cls, type: RoomType) -> list[Role]:  # noqa: A002
+        owner_role = Role(type=..., name="owner", priority=100, permissions=...)
+        match type:
+            case RoomType.DIRECT:
+                ...
+            case RoomType.GROUP:
+                ...
+            case RoomType.CHANNEL:
+                ...
 
     def add_member(self, member: ...) -> ...:
         ...

@@ -23,6 +23,7 @@ class RoomModel(Base):
     name: Mapped[StrNullable]
     slug: Mapped[StrNullable]
     visibility: Mapped[str]
+    member_count: Mapped[int]
 
     settings: Mapped["RoomSettingsModel"] = relationship(
         back_populates="room", cascade="all, delete-orphan", uselist=False
@@ -49,7 +50,7 @@ class MemberModel(Base):
 
     user_id: Mapped[PostgresUUID]
     room_id: Mapped[UUID] = mapped_column(ForeignKey("rooms.id"), unique=False)
-    role_id: Mapped[UUID] = mapped_column(ForeignKey("roles.id"), unique=False)
+    room_role_id: Mapped[UUID] = mapped_column(ForeignKey("roles.id"), unique=False)
     status: Mapped[str]
     joined_at: Mapped[DatetimeDefault]
 
@@ -127,8 +128,9 @@ class MemberPermissionModel(Base):
     __tablename__ = "member_permissions"
 
     member_id: Mapped[UUID] = mapped_column(ForeignKey("members.id"), unique=False)
-    permission_id: Mapped[str] = mapped_column(ForeignKey("permissions.id"), unique=False)
+    permission_id: Mapped[UUID] = mapped_column(ForeignKey("permissions.id"), unique=False)
     status: Mapped[str] = mapped_column(default="grant")
+    granted_by: Mapped[PostgresUUID]
 
     member: Mapped["MemberModel"] = relationship(back_populates="member_permissions")
     permission: Mapped["PermissionModel"] = relationship(back_populates="member_permissions")
