@@ -6,26 +6,23 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
+from ..core.domain import Member
 from .commands import CreateRoomCommand
-from .entities import Permission, Role
 from .events import Event, EventT, PayloadT, RoomCreated
-from .rules import (
-    GUEST_PERMISSIONS,
-    MEMBER_PERMISSIONS,
-    OWNER_PERMISSIONS,
-    configure_default_room_settings,
-)
+from .rules import ROLES_REGISTRY, configure_default_room_settings
 from .value_objects import (
     CurrentDatetime,
     EventStatus,
     EventType,
     Id,
     Name,
-    PermissionCode,
+    Permission,
+    Role,
     RoomSettings,
     RoomType,
     RoomVisibility,
     Slug,
+    SystemRole,
 )
 
 
@@ -70,50 +67,38 @@ class Room(AggregateRoot):
             members_count=len(command.initial_users) + 1,
             settings=configure_default_room_settings(command.type, command.visibility),
         )
+        owner = Member.model_validate({
+            "user_id": created_by,
+            "room_id": room.id,
+            "role": ROLES_REGISTRY[SystemRole.OWNER],
+            "nickname": "empty",
+        })
+        members: list[Member] = [
+            Member.model_validate({
+                "user_id": initial_user,
+                "room_id": room.id,
+                "role": cls._define_role(room.type),
+                "nickname": "empty",
+            })
+            for initial_user in command.initial_users
+        ]
+        members.append(owner)
         cls._register_event(
             type="room_created",
-            payload=RoomCreated.model_validate({
-                **room.model_dump(),
-                "initial_users": command.initial_users,
-                "roles": ...,
-            })
+            payload=RoomCreated.model_validate({**room.model_dump(), "members": members[::-1]})
         )
-        return ...
+        return room
 
-    @classmethod
-    def _define_roles(cls, type: RoomType) -> list[Role]:  # noqa: A002
-        owner_role = Role(type=..., name="owner", priority=100, permissions=...)
+    @staticmethod
+    def _define_role(type: RoomType) -> Role:  # noqa: A002
         match type:
-            case RoomType.DIRECT:
-                ...
-            case RoomType.GROUP:
-                ...
+            case RoomType.DIRECT, RoomType.GROUP:
+                return ROLES_REGISTRY[SystemRole.MEMBER]
             case RoomType.CHANNEL:
-                ...
+                return ROLES_REGISTRY[SystemRole.GUEST]
 
-    def add_member(self, member: ...) -> ...:
-        ...
+    def add_member(self, user_id: UUID) -> Member:
+        """Добавляет пользователя в комнату"""
 
-
-class RoomRole(BaseModel):
-    """Роль пользователя в конкретной комнате с набором разрешений.
-    Объединяет роль и её разрешения для обеспечения целостности правил доступа.
-    """
-    room_id: UUID
-    role: Role
-    permissions: list[Permission]
-
-    def add_permission(self, permission: Permission) -> None:
-        """Добавляет разрешение в роль, если его ещё нет.
-
-        :param permission: Сущность разрешения.
-        """
-        if permission not in self.permissions:
-            self.permissions.append(permission)
-
-    def has_permission(self, permission_code: PermissionCode) -> bool:
-        """Проверяет наличие конкретного разрешения к роли.
-
-        :param permission_code: Уникальный код разрешения конкретного действия.
-        """
-        return any(permission.code == permission_code for permission in self.permissions)
+    def create_custom_role(self, name: Name, permissions: list[Permission]) -> Role:
+        """Создаёт кастомную роль внутри комнаты"""

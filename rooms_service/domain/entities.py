@@ -1,26 +1,16 @@
 from __future__ import annotations
 
-from typing import Self
-
 from abc import ABC
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, computed_field, model_validator
+from pydantic import BaseModel, ConfigDict
 
-from .rules import configure_default_room_settings
 from .value_objects import (
     CurrentDatetime,
     Id,
     MemberStatus,
-    Name,
     Nickname,
-    PermissionCode,
-    RolePriority,
-    RoleType,
-    RoomSettings,
-    RoomType,
-    RoomVisibility,
-    Slug,
+    Role,
 )
 
 
@@ -28,36 +18,6 @@ class _Entity(BaseModel, ABC):
     id: Id
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class Room(_Entity):
-    """Комната, абстракция над каналами, группами и чатами.
-
-    Attributes:
-        created_by: Идентификатор пользователя создавшего комнату.
-        type: Тип комнаты: channel, group, ...
-        name: Имя комнаты.
-        slug: Человеко-читаемый ID для URL.
-        visibility: Область видимости комнаты.
-        created_at: Дата создания комнаты.
-    """
-    created_by: UUID
-    type: RoomType
-    name: Name | None = None
-    slug: Slug | None = None
-    visibility: RoomVisibility = RoomVisibility.PUBLIC
-    created_at: CurrentDatetime
-
-    @property
-    @computed_field(description="Настройки комнаты")
-    def settings(self) -> RoomSettings:
-        return configure_default_room_settings(self.type, self.visibility)
-
-    @model_validator(mode="after")
-    def validate_name(self) -> Self:
-        if self.type == RoomType.DIRECT and self.name is not None:
-            raise ValueError("Name of room with direct type must be None!")
-        return self
 
 
 class Member(_Entity):
@@ -77,38 +37,3 @@ class Member(_Entity):
     nickname: Nickname
     status: MemberStatus = MemberStatus.ACTIVE
     joined_at: CurrentDatetime
-
-
-class Role(_Entity):
-    """Сущность роли (для разграничения прав и доступа к контенту внутри комнаты)
-
-    Attributes:
-        type: Тип роли: system, custom ...
-        name: Имя роли: owner, admin, ...
-        description: Человеко-читаемое описание.
-        priority: Приоритет роли над другими ролями, где 100 самый высокий приоритет.
-    """
-    type: RoleType
-    name: Name
-    description: str
-    priority: RolePriority
-    permissions: list[Permission]
-
-
-class Permission(_Entity):
-    """Права и привилегии участника.
-
-    Attributes:
-        code: Код привилегии для разработчиков: message:send, message:edit, member:delete ...
-        category: Ресурс к которому выдаётся привилегия.
-    """
-    code: PermissionCode
-    category: str
-
-    def __hash__(self) -> int:
-        return hash(self.code)
-
-    def __eq__(self, other: Permission) -> bool:
-        if not isinstance(other, Permission):
-            return False
-        return self.id == other.id and self.code == other.code and self.category == other.category

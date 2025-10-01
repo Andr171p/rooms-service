@@ -12,7 +12,9 @@ __all__ = (
     "MemberStatus",
     "Name",
     "Nickname",
+    "Permission",
     "PermissionCode",
+    "Role",
     "RolePriority",
     "RoleType",
     "RoomMediaSettings",
@@ -22,7 +24,7 @@ __all__ = (
     "RoomType",
     "RoomVisibility",
     "Slug",
-    "SystemRole",
+    "SystemRole"
 )
 
 from .enums import (
@@ -39,6 +41,8 @@ from .enums import (
 )
 from .objects import (
     MemberIdentity,
+    Permission,
+    Role,
     RoomMediaSettings,
     RoomMembersSettings,
     RoomMessagesSettings,

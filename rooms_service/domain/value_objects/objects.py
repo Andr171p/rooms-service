@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from ..constants import (
     DEFAULT_ADMINS,
@@ -18,7 +18,48 @@ from ..constants import (
     MIN_PINNED_MESSAGES,
     UNLIMITED_MEDIA_FORMATS,
 )
-from .enums import JoinPermission, MediaType
+from .enums import JoinPermission, MediaType, RoleType
+from .primitives import Name, PermissionCode, RolePriority
+
+# Приоритеты системных ролей
+GUEST_PRIORITY = 1
+MEMBER_PRIORITY = 30
+ADMIN_PRIORITY = 70
+OWNER_PRIORITY = 100
+
+
+class Role(BaseModel):
+    """Сущность роли (для разграничения прав и доступа к контенту внутри комнаты)
+
+    Attributes:
+        type: Тип роли: system, custom ...
+        name: Имя роли: owner, admin, ...
+        priority: Приоритет роли над другими ролями, где 100 самый высокий приоритет.
+        permissions: Права которые принадлежат роли.
+    """
+    type: RoleType
+    name: Name
+    priority: RolePriority
+    permissions: list[Permission]
+
+
+class Permission(BaseModel):
+    """Права и привилегии участника.
+
+    Attributes:
+        code: Код привилегии для разработчиков: message:send, message:edit, member:delete ...
+        category: Ресурс к которому выдаётся привилегия.
+    """
+    code: PermissionCode
+    category: str
+
+    def __hash__(self) -> int:
+        return hash(self.code)
+
+    def __eq__(self, other: Permission) -> bool:
+        if not isinstance(other, Permission):
+            return False
+        return self.code == other.code and self.category == other.category
 
 
 class RoomSettings(BaseModel):

@@ -10,6 +10,7 @@ from datetime import datetime
 import pytz
 
 from .constants import DEFAULT_CHANNEL_MEMBERS, DEFAULT_DIRECT_MEMBERS, DEFAULT_GROUP_MEMBERS
+from .value_objects import Name, Permission, Role, RolePriority, RoleType, SystemRole
 
 moscow_tz = pytz.timezone("Europe/Moscow")
 
@@ -81,27 +82,54 @@ def configure_default_room_settings(
 
 
 # Права для гостя
-GUEST_PERMISSIONS: Final[set[PermissionCode]] = {
-    PermissionCode("message:read"),
-    PermissionCode("message:react"),
+GUEST_PERMISSIONS: Final[set[Permission]] = {
+    Permission(code=PermissionCode("message:read"), category="message"),
+    Permission(code=PermissionCode("message:react"), category="message"),
 }
 # Права участника
-MEMBER_PERMISSIONS: Final[set[PermissionCode]] = GUEST_PERMISSIONS | {
-    PermissionCode("message:send"),
-    PermissionCode("message:pin"),
-    PermissionCode("media:send"),
-    PermissionCode("member:add"),
+MEMBER_PERMISSIONS: Final[set[Permission]] = GUEST_PERMISSIONS | {
+    Permission(code=PermissionCode("message:send"), category="message"),
+    Permission(code=PermissionCode("message:pin"), category="message"),
+    Permission(code=PermissionCode("media:send"), category="media"),
+    Permission(code=PermissionCode("member:add"), category="member"),
 }
 # Права админа
-ADMIN_PERMISSIONS: Final[set[PermissionCode]] = MEMBER_PERMISSIONS | {
-    PermissionCode("member:ban"),
-    PermissionCode("member:kick"),
-    PermissionCode("member:mute"),
-    PermissionCode("member:invite"),
+ADMIN_PERMISSIONS: Final[set[Permission]] = MEMBER_PERMISSIONS | {
+    Permission(code=PermissionCode("member:ban"), category="member"),
+    Permission(code=PermissionCode("member:kick"), category="member"),
+    Permission(code=PermissionCode("member:mute"), category="member"),
+    Permission(code=PermissionCode("member:invite"), category="member"),
 }
 # Права для владельца ('owner')
-OWNER_PERMISSIONS: Final[set[PermissionCode]] = {
-    PermissionCode("room:manage"),
-    PermissionCode("role:manage"),
-    PermissionCode("role:create"),
+OWNER_PERMISSIONS: Final[set[Permission]] = ADMIN_PERMISSIONS | {
+    Permission(code=PermissionCode("room:manage"), category="room"),
+    Permission(code=PermissionCode("role:manage"), category="role"),
+    Permission(code=PermissionCode("role:create"), category="role"),
+}
+
+ROLES_REGISTRY: Final[dict[SystemRole, Role]] = {
+    SystemRole.GUEST: Role(
+        type=RoleType.SYSTEM,
+        name=Name("guest"),
+        priority=RolePriority(1),
+        permissions=list(GUEST_PERMISSIONS),
+    ),
+    SystemRole.MEMBER: Role(
+        type=RoleType.SYSTEM,
+        name=Name("member"),
+        priority=RolePriority(30),
+        permissions=list(MEMBER_PERMISSIONS),
+    ),
+    SystemRole.ADMIN: Role(
+        type=RoleType.SYSTEM,
+        name=Name("admin"),
+        priority=RolePriority(70),
+        permissions=list(ADMIN_PERMISSIONS),
+    ),
+    SystemRole.OWNER: Role(
+        type=RoleType.SYSTEM,
+        name=Name("owner"),
+        priority=RolePriority(100),
+        permissions=list(OWNER_PERMISSIONS),
+    )
 }
