@@ -4,13 +4,11 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from ..domain.value_objects import (
+    CurrentDatetime,
     Id,
     MemberStatus,
     Name,
     Nickname,
-    RoomType,
-    RoomVisibility,
-    Slug,
 )
 
 
@@ -26,30 +24,4 @@ class MemberAdd(_DTO):
     role_name: Name
     nickname: Nickname
     status: MemberStatus = MemberStatus.ACTIVE
-
-
-class InitialMember(_DTO):
-    user_id: UUID
-    role_id: UUID
-    nickname: Nickname | None = None
-    status: MemberStatus = MemberStatus.ACTIVE
-
-
-class RoomCreate(_DTO):
-    """Команда для создания комнаты.
-
-        Attributes:
-            created_by: Создатель комнаты.
-            name: Имя комнаты (придумывает пользователь).
-            slug: Человеко-читаемый псевдоним для URL адреса
-            (задаётся пользователем или генерируется автоматически)
-            type: Тип создаваемой комнаты.
-            visibility: Видимость комнаты для других пользователей.
-            members: Участники, которых нужно добавить в комнату.
-        """
-    created_by: UUID
-    name: Name
-    slug: Slug
-    type: RoomType
-    visibility: RoomVisibility
-    members: list[InitialMember]
+    joined_at: CurrentDatetime

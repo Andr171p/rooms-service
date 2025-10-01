@@ -90,3 +90,10 @@ class RoomCreated(BaseModel):
     settings: RoomSettings
     member_count: NonNegativeInt
     members: list[Member]
+
+
+class MemberAdded(BaseModel):
+    user_id: UUID
+    room_id: UUID
+    role_name: Name
+    member_count: NonNegativeInt

@@ -1,3 +1,11 @@
+class _DomainError(Exception):
+    """Доменная ошибка"""
+
+
+class MembersExceededError(_DomainError):
+    """Превышено максимальное число пользователей"""
+
+
 class _RepositoryError(Exception):
     """Базовая ошибка репозитория"""
 

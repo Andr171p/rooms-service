@@ -9,8 +9,9 @@ from uuid import UUID
 from pydantic import BaseModel, PositiveInt
 
 from ..domain.aggragates import Room
-from ..domain.entities import Member, Role
-from ..domain.value_objects import SystemRole
+from ..domain.entities import Member
+from ..domain.value_objects import Role, SystemRole
+from .dto import MemberAdd
 
 EntityT = TypeVar("EntityT", bound=BaseModel)
 
@@ -72,7 +73,8 @@ class RoleRepository(CRUDRepository[Role]):
 
 class RoomRepository(CRUDRepository[Room]):
     @abstractmethod
-    async def add_member(self, member: ...) -> ...: ...
+    async def add_member(self, member: MemberAdd) -> Member:
+        """Добавляет участника в комнату"""
 
     @abstractmethod
     async def get_members(self, id: UUID, limit: PositiveInt, page: PositiveInt) -> list[Member]:  # noqa: A002

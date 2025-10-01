@@ -4,20 +4,25 @@ from abc import ABC
 from collections.abc import Iterator
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, computed_field
 
 from ..core.domain import Member
 from .commands import CreateRoomCommand
-from .events import Event, EventT, PayloadT, RoomCreated
-from .rules import ROLES_REGISTRY, configure_default_room_settings
+from .events import Event, EventT, MemberAdded, PayloadT, RoomCreated
+from .exceptions import MembersExceededError
+from .rules import ROLES_REGISTRY
 from .value_objects import (
     CurrentDatetime,
     EventStatus,
     EventType,
     Id,
+    JoinPermission,
     Name,
     Permission,
     Role,
+    RoomMediaSettings,
+    RoomMembersSettings,
+    RoomMessagesSettings,
     RoomSettings,
     RoomType,
     RoomVisibility,
@@ -29,13 +34,23 @@ from .value_objects import (
 class AggregateRoot(BaseModel, ABC):
     id: Id
     _events: list[EventT] = Field(default_factory=list, exclude=True)
-    _version: str = Field(default="0.1.0", exclude=True)
+    _version: int = Field(default=1, exclude=True)
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True, validate_assignment=True, frozen=False
     )
 
+    @property
+    def version(self) -> int:
+        """Текущая версия агрегата"""
+        return self._version
+
+    def increment_version(self) -> None:
+        """Увеличение версии агрегата"""
+        self._version += 1
+
     def _register_event(self, type: EventType, payload: PayloadT) -> None:  # noqa: A002
+        """Регистрирует доменное событие"""
         self._events.append(Event.model_validate({
             "type": type, "status": EventStatus.NEW, "payload": payload
         }))
@@ -54,7 +69,11 @@ class Room(AggregateRoot):
     visibility: RoomVisibility
     created_at: CurrentDatetime
     member_count: NonNegativeInt
-    settings: RoomSettings
+
+    @computed_field(description="Настройки комнаты")
+    @property
+    def settings(self) -> RoomSettings:
+        return self.configure_default_room_settings(self.visibility)
 
     @classmethod
     def create(cls, command: CreateRoomCommand, created_by: UUID) -> Self:
@@ -65,7 +84,6 @@ class Room(AggregateRoot):
             slug=command.slug,
             visibility=command.visibility,
             members_count=len(command.initial_users) + 1,
-            settings=configure_default_room_settings(command.type, command.visibility),
         )
         owner = Member.model_validate({
             "user_id": created_by,
@@ -77,7 +95,7 @@ class Room(AggregateRoot):
             Member.model_validate({
                 "user_id": initial_user,
                 "room_id": room.id,
-                "role": cls._define_role(room.type),
+                "role": cls._define_role(),
                 "nickname": "empty",
             })
             for initial_user in command.initial_users
@@ -89,16 +107,53 @@ class Room(AggregateRoot):
         )
         return room
 
-    @staticmethod
-    def _define_role(type: RoomType) -> Role:  # noqa: A002
-        match type:
+    def _define_role(self) -> Role:
+        """Определяет системные роли по умолчанию для новых участников"""
+        match self.type:
             case RoomType.DIRECT, RoomType.GROUP:
                 return ROLES_REGISTRY[SystemRole.MEMBER]
             case RoomType.CHANNEL:
                 return ROLES_REGISTRY[SystemRole.GUEST]
 
-    def add_member(self, user_id: UUID) -> Member:
+    @staticmethod
+    def configure_default_room_settings(visibility: RoomVisibility) -> RoomSettings:
+        """Конфигурирует настройки комнаты по умолчанию.
+
+        :param visibility: Видимость комнаты.
+        :return Сконфигурированные настройки комнаты.
+        """
+        join_permission = (
+            JoinPermission.APPROVAL
+            if visibility == RoomVisibility.PRIVATE
+            else JoinPermission.OPEN
+        )
+        return RoomSettings(
+            messages=RoomMessagesSettings(
+                allow_forwarding=not RoomVisibility.PRIVATE,
+            ),
+            members=RoomMembersSettings(join_permission=join_permission),
+            media=RoomMediaSettings(),
+        )
+
+    def add_member(self, user_id: UUID, role_name: Name | None = None) -> None:
         """Добавляет пользователя в комнату"""
+        if self.member_count >= self.settings.members.max_members:
+            raise MembersExceededError(
+                f"Member count exceeded! Max members: {self.settings.members.max_members}"
+            )
+        if role_name is None:
+            role = self._define_role()
+            role_name = role.name
+        self.member_count += 1
+        self._register_event(
+            type=EventType("member_added"), payload=MemberAdded(
+                user_id=user_id,
+                room_id=self.id,
+                role_name=role_name,
+                member_count=self.member_count
+            )
+        )
+        self.increment_version()
 
     def create_custom_role(self, name: Name, permissions: list[Permission]) -> Role:
         """Создаёт кастомную роль внутри комнаты"""

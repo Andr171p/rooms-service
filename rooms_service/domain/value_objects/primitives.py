@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 from pydantic import Field
 from pydantic_core import CoreSchema, core_schema
 
-from ..rules import current_datetime
+from ...shared import current_datetime
 
 # Уникальный UUID идентификатор
 Id = Annotated[UUID, Field(default_factory=uuid4)]

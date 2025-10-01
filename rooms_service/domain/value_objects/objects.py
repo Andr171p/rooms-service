@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..constants import (
     DEFAULT_ADMINS,
@@ -20,12 +20,6 @@ from ..constants import (
 )
 from .enums import JoinPermission, MediaType, RoleType
 from .primitives import Name, PermissionCode, RolePriority
-
-# Приоритеты системных ролей
-GUEST_PRIORITY = 1
-MEMBER_PRIORITY = 30
-ADMIN_PRIORITY = 70
-OWNER_PRIORITY = 100
 
 
 class Role(BaseModel):
@@ -86,7 +80,7 @@ class RoomMessagesSettings(BaseModel):
 
 
 class RoomMembersSettings(BaseModel):
-    max_members: int = Field(ge=MIN_MEMBERS, le=MAX_MEMBERS)
+    max_members: int = Field(default=MAX_MEMBERS, ge=MIN_MEMBERS, le=MAX_MEMBERS)
     max_admins: int = Field(default=DEFAULT_ADMINS, ge=MIN_ADMINS, le=MAX_ADMINS)
     join_permission: JoinPermission = JoinPermission.OPEN
 
