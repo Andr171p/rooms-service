@@ -34,6 +34,7 @@ class RoomCreate(_DTO):
     member_count: NonNegativeInt
     members: list[MemberAdd]
     roles: list[Role]
+    version: NonNegativeInt
 
 
 class MemberAdd(_DTO):

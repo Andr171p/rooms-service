@@ -82,19 +82,22 @@ class Room(_AggregateRoot):
             name=command.name,
             slug=command.slug,
             visibility=command.visibility,
-            members_count=len(command.initial_users) + 1,
+            member_count=len(command.initial_users) + 1,
             roles=[ROLES_REGISTRY[SystemRole.OWNER], cls._give_default_role(command.type)]
         )
         cls._register_event(
-            type="room_created", payload=RoomCreated.model_validate(room)
+            type="room_created", payload=RoomCreated.model_validate({
+                **room.model_dump(), "version": room.version
+            })
         )
         members_added: list[MemberAdded] = [MemberAdded(
-            user_id=created_by, room_id=room.id, role_name=Name("owner")
+            user_id=created_by, room_id=room.id, role_name=Name("owner"), version=room.version
         )]
         members_added.extend(MemberAdded(
                 user_id=initial_user,
                 room_id=room.id,
-                role_name=cls._give_default_role(room.type).name
+                role_name=cls._give_default_role(room.type).name,
+                version=room.version
             ) for initial_user in command.initial_users)
         for member_added in members_added:
             cls._register_event(type="member_added", payload=member_added)
@@ -144,7 +147,8 @@ class Room(_AggregateRoot):
                 user_id=user_id,
                 room_id=self.id,
                 role_name=role_name,
-                member_count=self.member_count
+                member_count=self.member_count,
+                version=self.version + 1,
             )
         )
         self.increment_version()

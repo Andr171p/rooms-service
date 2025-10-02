@@ -90,9 +90,11 @@ class RoomCreated(BaseModel):
     settings: RoomSettings
     member_count: NonNegativeInt
     roles: list[Role]
+    version: NonNegativeInt
 
 
 class MemberAdded(BaseModel):
     user_id: UUID
     room_id: UUID
     role_name: Name
+    version: NonNegativeInt
