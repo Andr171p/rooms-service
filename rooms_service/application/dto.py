@@ -24,6 +24,7 @@ class _DTO(BaseModel, ABC):
 
 class RoomCreate(_DTO):
     """Создание комнаты"""
+    id: UUID
     created_by: UUID
     type: RoomType
     name: Name | None = None

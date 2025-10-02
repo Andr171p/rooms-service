@@ -29,6 +29,7 @@ class Role(BaseModel):
         type: Тип роли: system, custom ...
         name: Имя роли: owner, admin, ...
         priority: Приоритет роли над другими ролями, где 100 самый высокий приоритет.
+        is_default: Выдаётся ли роль по умолчанию новым участникам.
         permissions: Права которые принадлежат роли.
     """
     type: RoleType
