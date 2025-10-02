@@ -23,7 +23,7 @@ from .primitives import Name, PermissionCode, RolePriority
 
 
 class Role(BaseModel):
-    """Сущность роли (для разграничения прав и доступа к контенту внутри комнаты)
+    """Роль (для разграничения прав и доступа к контенту внутри комнаты)
 
     Attributes:
         type: Тип роли: system, custom ...
@@ -34,7 +34,21 @@ class Role(BaseModel):
     type: RoleType
     name: Name
     priority: RolePriority
+    is_default: bool
     permissions: list[Permission]
+
+    def __hash__(self) -> int:
+        return hash(f"{self.type}:{self.name}")
+
+    def __eq__(self, other: Role) -> bool:
+        if not isinstance(other, Role):
+            return False
+        return (
+                self.type == other.type and
+                self.name == other.name and
+                self.priority == other.priority and
+                self.permissions == other.permissions
+        )
 
 
 class Permission(BaseModel):

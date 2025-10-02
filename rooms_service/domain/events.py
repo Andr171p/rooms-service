@@ -5,9 +5,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, computed_field
 
+from ..shared import current_datetime
 from .constants import SOURCE
-from .entities import Member
-from .rules import current_datetime
 from .value_objects import (
     CorrelationId,
     CurrentDatetime,
@@ -15,6 +14,7 @@ from .value_objects import (
     EventType,
     Id,
     Name,
+    Role,
     RoomSettings,
     RoomType,
     RoomVisibility,
@@ -89,11 +89,10 @@ class RoomCreated(BaseModel):
     created_at: CurrentDatetime
     settings: RoomSettings
     member_count: NonNegativeInt
-    members: list[Member]
+    roles: list[Role]
 
 
 class MemberAdded(BaseModel):
     user_id: UUID
     room_id: UUID
     role_name: Name
-    member_count: NonNegativeInt

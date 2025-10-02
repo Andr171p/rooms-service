@@ -10,7 +10,6 @@ from .base import (
     PostgresUUID,
     StrNullable,
     StrUnique,
-    TextNullable,
 )
 
 
@@ -24,6 +23,7 @@ class RoomModel(Base):
     slug: Mapped[StrNullable]
     visibility: Mapped[str]
     member_count: Mapped[int]
+    version: Mapped[int]
 
     settings: Mapped["RoomSettingsModel"] = relationship(
         back_populates="room", cascade="all, delete-orphan", uselist=False
@@ -50,12 +50,12 @@ class MemberModel(Base):
 
     user_id: Mapped[PostgresUUID]
     room_id: Mapped[UUID] = mapped_column(ForeignKey("rooms.id"), unique=False)
-    room_role_id: Mapped[UUID] = mapped_column(ForeignKey("roles.id"), unique=False)
+    room_role_id: Mapped[UUID] = mapped_column(ForeignKey("room_roles.id"), unique=False)
     status: Mapped[str]
     joined_at: Mapped[DatetimeDefault]
 
     room: Mapped["RoomModel"] = relationship(back_populates="members")
-    role: Mapped["RoleModel"] = relationship(back_populates="member")
+    room_role: Mapped["RoomRoleModel"] = relationship(back_populates="member")
     member_permissions: Mapped[list["MemberPermissionModel"]] = relationship(
         back_populates="member"
     )
@@ -66,34 +66,56 @@ class MemberModel(Base):
 
 
 class RoomRoleModel(Base):
+    """Роли внутри комнаты"""
     __tablename__ = "room_roles"
 
     room_id: Mapped[UUID] = mapped_column(ForeignKey("rooms.id"), unique=False)
-    role_id: Mapped[UUID] = mapped_column(ForeignKey("roles.id"), unique=False)
+    role_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("roles.id"), unique=False, nullable=True
+    )
+    name: Mapped[str]
+    description: Mapped[StrNullable]
+    priority: Mapped[int]
+    is_default: Mapped[bool]
 
     room: Mapped["RoomModel"] = relationship(back_populates="room_roles")
     role: Mapped["RoleModel"] = relationship(back_populates="room_roles")
+    member: Mapped["MemberModel"] = relationship(back_populates="room_roles")
+    room_role_permissions: Mapped[list["RoomRolePermissionModel"]] = relationship(
+        back_populates="room_role", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
-        UniqueConstraint("room_id", "role_id", name="unique_room_role"),
+        UniqueConstraint("room_id", "name", name="unique_room_role"),
+    )
+
+
+class RoomRolePermissionModel(Base):
+    """Права для кастомных ролей внутри комнаты"""
+    __tablename__ = "room_role_permissions"
+
+    room_role_id: Mapped[UUID] = mapped_column(ForeignKey("room_roles.id"), unique=False)
+    permission_id: Mapped[UUID] = mapped_column(ForeignKey("permissions.id"), unique=False)
+
+    room_role: Mapped["RoomRoleModel"] = relationship(back_populates="room_role_permissions")
+    permission: Mapped["PermissionModel"] = relationship(back_populates="room_role_permissions")
+
+    __table_args__ = (
+        UniqueConstraint("room_role_id", "permission_id", name="unique_room_role_permission"),
     )
 
 
 class RoleModel(Base):
-    __tablename__ = "roles"
+    __tablename__ = "system_roles"
 
     type: Mapped[str]
-    name: Mapped[str]
-    description: Mapped[TextNullable]
+    name: Mapped[StrUnique]
     priority: Mapped[int]
 
     role_permissions: Mapped[list["RolePermissionModel"]] = relationship(
         back_populates="role", cascade="all, delete-orphan"
     )
     room_roles: Mapped[list["RoomRoleModel"]] = relationship(
-        back_populates="role", cascade="all, delete-orphan"
-    )
-    members: Mapped[list["MemberModel"]] = relationship(
         back_populates="role", cascade="all, delete-orphan"
     )
 
@@ -107,7 +129,12 @@ class PermissionModel(Base):
     role_permissions: Mapped[list["RolePermissionModel"]] = relationship(
         back_populates="permission", cascade="all, delete-orphan"
     )
-    member_permission: Mapped["MemberPermissionModel"] = relationship(back_populates="permission")
+    member_permissions: Mapped[list["MemberPermissionModel"]] = relationship(
+        back_populates="permission", cascade="all, delete-orphan"
+    )
+    room_role_permissions: Mapped[list["RoomRolePermissionModel"]] = relationship(
+        back_populates="permission", cascade="all, delete-orphan"
+    )
 
 
 class RolePermissionModel(Base):

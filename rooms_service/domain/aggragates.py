@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, computed_field
 
-from ..core.domain import Member
 from .commands import CreateRoomCommand
 from .events import Event, EventT, MemberAdded, PayloadT, RoomCreated
 from .exceptions import MembersExceededError
@@ -18,7 +17,6 @@ from .value_objects import (
     Id,
     JoinPermission,
     Name,
-    Permission,
     Role,
     RoomMediaSettings,
     RoomMembersSettings,
@@ -31,7 +29,7 @@ from .value_objects import (
 )
 
 
-class AggregateRoot(BaseModel, ABC):
+class _AggregateRoot(BaseModel, ABC):
     id: Id
     _events: list[EventT] = Field(default_factory=list, exclude=True)
     _version: int = Field(default=1, exclude=True)
@@ -61,7 +59,7 @@ class AggregateRoot(BaseModel, ABC):
             yield self._events.pop(0)
 
 
-class Room(AggregateRoot):
+class Room(_AggregateRoot):
     created_by: UUID
     type: RoomType
     name: Name | None = None
@@ -69,6 +67,7 @@ class Room(AggregateRoot):
     visibility: RoomVisibility
     created_at: CurrentDatetime
     member_count: NonNegativeInt
+    roles: list[Role]
 
     @computed_field(description="Настройки комнаты")
     @property
@@ -84,32 +83,27 @@ class Room(AggregateRoot):
             slug=command.slug,
             visibility=command.visibility,
             members_count=len(command.initial_users) + 1,
+            roles=[ROLES_REGISTRY[SystemRole.OWNER], cls._give_default_role(command.type)]
         )
-        owner = Member.model_validate({
-            "user_id": created_by,
-            "room_id": room.id,
-            "role": ROLES_REGISTRY[SystemRole.OWNER],
-            "nickname": "empty",
-        })
-        members: list[Member] = [
-            Member.model_validate({
-                "user_id": initial_user,
-                "room_id": room.id,
-                "role": cls._define_role(),
-                "nickname": "empty",
-            })
-            for initial_user in command.initial_users
-        ]
-        members.append(owner)
         cls._register_event(
-            type="room_created",
-            payload=RoomCreated.model_validate({**room.model_dump(), "members": members[::-1]})
+            type="room_created", payload=RoomCreated.model_validate(room)
         )
+        members_added: list[MemberAdded] = [MemberAdded(
+            user_id=created_by, room_id=room.id, role_name=Name("owner")
+        )]
+        members_added.extend(MemberAdded(
+                user_id=initial_user,
+                room_id=room.id,
+                role_name=cls._give_default_role(room.type).name
+            ) for initial_user in command.initial_users)
+        for member_added in members_added:
+            cls._register_event(type="member_added", payload=member_added)
         return room
 
-    def _define_role(self) -> Role:
+    @staticmethod
+    def _give_default_role(type: RoomType) -> Role:  # noqa: A002
         """Определяет системные роли по умолчанию для новых участников"""
-        match self.type:
+        match type:
             case RoomType.DIRECT, RoomType.GROUP:
                 return ROLES_REGISTRY[SystemRole.MEMBER]
             case RoomType.CHANNEL:
@@ -154,6 +148,3 @@ class Room(AggregateRoot):
             )
         )
         self.increment_version()
-
-    def create_custom_role(self, name: Name, permissions: list[Permission]) -> Role:
-        """Создаёт кастомную роль внутри комнаты"""

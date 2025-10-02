@@ -10,8 +10,9 @@ from pydantic import BaseModel, PositiveInt
 
 from ..domain.aggragates import Room
 from ..domain.entities import Member
+from ..domain.events import RoomCreated
 from ..domain.value_objects import Role, SystemRole
-from .dto import MemberAdd
+from .dto import MemberAdd, RoomCreate
 
 EntityT = TypeVar("EntityT", bound=BaseModel)
 
@@ -21,7 +22,6 @@ class UnitOfWork(ABC):
      обеспечивающий атомарность и согласованность данных.
     """
     room_repository: RoomRepository
-    role_repository: RoleRepository
 
     @abstractmethod
     async def __aenter__(self) -> Self:
@@ -65,13 +65,13 @@ class CRUDRepository(ReadableRepository[EntityT], Protocol[EntityT]):
     async def delete(self, id: UUID) -> bool: pass  # noqa: A002
 
 
-class RoleRepository(CRUDRepository[Role]):
+class RoomRepository(ReadableRepository[Room]):
     @abstractmethod
-    async def get_system(self, name: SystemRole) -> Role:
-        """Получение системной роли по её уникальной комбинации атрибутов"""
+    async def create_role(self, role: Role) -> Role: pass
 
+    @abstractmethod
+    async def create(self, room: RoomCreate) -> Room: ...
 
-class RoomRepository(CRUDRepository[Room]):
     @abstractmethod
     async def add_member(self, member: MemberAdd) -> Member:
         """Добавляет участника в комнату"""

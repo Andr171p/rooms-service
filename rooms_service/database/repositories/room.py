@@ -1,110 +1,64 @@
 from uuid import UUID
 
-from pydantic import PositiveInt
 from sqlalchemy import insert, select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 
 from ...application.dto import RoomCreate
-from ...application.repositories import RoomRepository
-from ...domain.aggragates import RoomRole
-from ...domain.entities import Member, Permission, Role, Room
-from ...domain.exceptions import CreationError, ReadingError
-from ...domain.value_objects import Name
-from ..models import MemberModel, RoleModel, RolePermissionModel, RoomModel, RoomRoleModel
-from .crud import SQLReadableRepository
+from ...domain.aggragates import Room
+from ...domain.exceptions import ConflictError, CreationError
+from ...domain.value_objects import Name, Role, RoleType
+from ..models import MemberModel, RoleModel, RoomModel, RoomRoleModel
 
 
-class SQLRoomRepository(SQLReadableRepository[RoomModel, Room], RoomRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+class SQLRoomCreateRepository:
+    session: "AsyncSession"
 
     async def create(self, room: RoomCreate) -> Room:
         try:
-            stmt = insert(RoomModel).values(**room.model_dump()).returning(RoomModel)
+            stmt = (
+                insert(RoomModel)
+                .values(**room_created.model_dump(exclude={"members"}))
+                .returning(RoomModel)
+            )
             result = await self.session.execute(stmt)
             model = result.scalar_one()
+            roles: set[Role] = set()
+            room_roles = await self._create_room_roles(model.id, roles)
+            members: list[MemberModel] = [
+                MemberModel(
+                    id=member.id,
+                    room_id=member.room_id,
+                    room_role_id=room_roles[member.role],
+                    status=member.status,
+                    joined_at=member.joined_at,
+                )
+                for member in room_created.members
+            ]
+            self.session.add_all(members)
             return Room.model_validate(model)
-        except SQLAlchemyError as e:
-            raise CreationError(f"Error occurred while creation room, error: {e}") from e
-
-    async def get_members(
-            self, id: UUID, limit: PositiveInt, page: PositiveInt  # noqa: A002
-    ) -> list[Member]:
-        try:
-            offset = (page - 1) * limit
-            stmt = (
-                select(MemberModel)
-                .options(joinedload(MemberModel.role))
-                .where(MemberModel.room_id == id)
-                .offset(offset)
-                .limit(limit)
-            )
-            results = await self.session.execute(stmt)
-            models = results.scalars().all()
-            return [Member.model_validate(model) for model in models]
-        except SQLAlchemyError as e:
-            raise ReadingError(
-                f"Error occurred while reading members in room with {id}, error: {e}"
+        except IntegrityError as e:
+            raise ConflictError(
+                f"Room already exists with id: {room_created.id}, error: {e}"
             ) from e
+        except SQLAlchemyError as e:
+            raise CreationError(f"Error occurred while room creation, error: {e}") from e
 
-    async def get_role(self, id: UUID, role_name: Name) -> RoomRole | None:  # noqa: A002
-        try:
+    async def _find_role(self, name: Name, type: RoleType) -> RoleModel | None:  # noqa: A002
+        stmt = select(RoleModel).where((RoleModel.name == name) & (RoleModel.type == type))
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def _create_room_roles(self, room_id: UUID, roles: set[Role]) -> dict[Role, UUID]:
+        room_roles: dict[Role, UUID] = {}
+        for role in roles:
+            role_model = await self._find_role(role.name, role.type)
             stmt = (
-                select(RoomRoleModel)
-                .join(RoomRoleModel.role)
-                .join(RoleModel.role_permissions)
-                .join(RolePermissionModel.permission)
-                .options(
-                    joinedload(RoomRoleModel.role)
-                    .joinedload(RoleModel.role_permissions)
-                    .joinedload(RolePermissionModel.permission)
-                )
-                .where(
-                    (RoomRoleModel.room_id == id) &
-                    (RoleModel.name == role_name)
-                )
+                insert(RoomRoleModel)
+                .values(room_id=room_id, role_id=role_model.id)
+                .returning(RoomRoleModel)
             )
             result = await self.session.execute(stmt)
-            model = result.scalar_one_or_none()
-            if model is None:
-                return None
-            return self._convert_to_room_role_from_model(model)
-        except SQLAlchemyError as e:
-            raise ReadingError(
-                f"Error occurred while reading room role in room with id {id}, "
-                f"role name: {role_name}, error: {e}"
-            ) from e
-
-    async def get_roles(self, id: UUID) -> list[RoomRole]:  # noqa: A002
-        try:
-            stmt = (
-                select(RoomRoleModel)
-                .join(RoomRoleModel.role)
-                .join(RoleModel.role_permissions)
-                .join(RolePermissionModel.permission)
-                .options(
-                    joinedload(RoomRoleModel.role)
-                    .joinedload(RoleModel.role_permissions)
-                    .joinedload(RolePermissionModel.permission)
-                )
-                .where(RoomRoleModel.room_id == id)
-            )
-            results = await self.session.execute(stmt)
-            models = results.scalars().all()
-            return [self._convert_to_room_role_from_model(model) for model in models]
-        except SQLAlchemyError as e:
-            raise ReadingError(
-                f"Error occurred while reading room roles in room with id {id}, error: {e}"
-            ) from e
-
-    @staticmethod
-    def _convert_to_room_role_from_model(model: RoomRoleModel) -> RoomRole:
-        room_id = model.room_id
-        role = Role.model_validate(model.role)
-        permissions: list[Permission] = [
-            Permission.model_validate(role_permission.permission)
-            for role_permission in model.role.role_permissions
-        ]
-        return RoomRole(room_id=room_id, role=role, permissions=permissions)
+            room_role_model = result.scalar_one()
+            room_roles[role] = room_role_model.id
+        return room_roles
