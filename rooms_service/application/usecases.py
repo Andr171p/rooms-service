@@ -1,32 +1,35 @@
+from typing import Any
+
 from uuid import UUID
 
-from ..domain.entities import Room
-from ..domain.rules import get_default_system_role_by_room
-from ..domain.value_objects import SystemRole
-from rooms_service.domain.commands import CreateRoomCommand
-from .dto import InitialMember, RoomCreate
-from .repositories import UnitOfWork
+from ..domain.aggragates import Room
+from ..domain.commands import CreateRoomCommand
+from ..domain.events import Event
+from .dto import RoomCreate
+from .eventbus import EventBus
+from .repositories import RoomRepository
 
 
 class CreateRoomUseCase:
-    def __init__(self, uow: UnitOfWork) -> None:
-        self._uow = uow
+    """Реализация сценария создания комнаты"""
+    def __init__(self, repository: RoomRepository, eventbus: EventBus) -> None:
+        self._repository = repository
+        self._eventbus = eventbus
 
     async def execute(self, command: CreateRoomCommand, created_by: UUID) -> Room:
-        default_system_role_name = get_default_system_role_by_room(command.type)
-        async with self._uow.transaction():
-            owner_role = await self._uow.role_repository.get_system(SystemRole.OWNER)
-            default_role = await self._uow.role_repository.get_system(default_system_role_name)
-            initial_members: list[InitialMember] = [
-                InitialMember(user_id=initial_user, role_id=default_role.id)
-                for initial_user in command.initial_users
-            ]
-            initial_members.append(InitialMember(user_id=created_by, role_id=owner_role.id))
-            room_create = RoomCreate.model_validate({
-                **command.model_dump(exclude={"initial_users"}),
-                "created_by": created_by,
-                "members": initial_members[::-1]  # Owner в начале списка
-            })
-            created_room = await self._uow.room_repository.create(room_create)
-            await self._uow.commit()
+        room = Room.create(command, created_by)
+        values: dict[str, Any] = {}
+        events: list[Event] = []
+        for event in room.collect_events():
+            match event.type:
+                case "room_created":
+                    values.update(event.payload.model_dump())
+                case "member_added":
+                    if values["version"] == event.payload.version:
+                        values["members"] = event.payload.model_dump(exclude={"version"})
+            events.append(event)
+        room_create = RoomCreate.model_validate(values)
+        created_room = await self._repository.create(room_create)
+        for event in events:
+            await self._eventbus.publish(event)
         return created_room
