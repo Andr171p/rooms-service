@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, NonNegativeInt, model_validator
+from pydantic import BaseModel, ConfigDict, NonNegativeInt
 
 from ..domain.value_objects import (
     CurrentDatetime,
