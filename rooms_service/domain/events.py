@@ -94,7 +94,14 @@ class RoomCreated(BaseModel):
 
 
 class MemberAdded(BaseModel):
+    """Участник добавлен в комнату"""
     user_id: UUID
     room_id: UUID
     role_name: Name
+    version: NonNegativeInt
+
+
+class MembersAdded(BaseModel):
+    """Массовое добавление участников в комнату"""
+    members: list[MemberAdded]
     version: NonNegativeInt

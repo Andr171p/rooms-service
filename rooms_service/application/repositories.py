@@ -10,7 +10,7 @@ from pydantic import BaseModel, PositiveInt
 
 from ..domain.aggragates import Room
 from ..domain.entities import Member
-from ..domain.events import RoomCreated
+from ..domain.events import RoomCreated, MemberAdded
 from ..domain.value_objects import Role, SystemRole
 from .dto import MemberAdd, RoomCreate
 
@@ -75,6 +75,10 @@ class RoomRepository(ReadableRepository[Room]):
     @abstractmethod
     async def add_member(self, member: MemberAdd) -> Member:
         """Добавляет участника в комнату"""
+
+    @abstractmethod
+    async def add_members(self, members: list[MemberAdd]) -> None:
+        """Массовое добавление участников"""
 
     @abstractmethod
     async def get_members(self, id: UUID, limit: PositiveInt, page: PositiveInt) -> list[Member]:  # noqa: A002

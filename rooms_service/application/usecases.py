@@ -1,16 +1,23 @@
-from typing import Any
-
+from abc import ABC
 from uuid import UUID
 
 from ..domain.aggragates import Room
 from ..domain.commands import CreateRoomCommand
-from ..domain.events import Event
-from .dto import RoomCreate
+from ..domain.events import Event, EventT, MembersAdded, RoomCreated
+from .dto import MemberAdd, RoomCreate
 from .eventbus import EventBus
 from .repositories import RoomRepository
 
 
-class CreateRoomUseCase:
+class UseCase(ABC):
+    _eventbus: "EventBus"
+
+    async def _publish_events(self, events: list[EventT]) -> None:
+        for event in events:
+            await self._eventbus.publish(event)
+
+
+class CreateRoomUseCase(UseCase):
     """Реализация сценария создания комнаты"""
     def __init__(self, repository: RoomRepository, eventbus: EventBus) -> None:
         self._repository = repository
@@ -18,18 +25,11 @@ class CreateRoomUseCase:
 
     async def execute(self, command: CreateRoomCommand, created_by: UUID) -> Room:
         room = Room.create(command, created_by)
-        values: dict[str, Any] = {}
-        events: list[Event] = []
         for event in room.collect_events():
-            match event.type:
-                case "room_created":
-                    values.update(event.payload.model_dump())
-                case "member_added":
-                    if values["version"] == event.payload.version:
-                        values["members"] = event.payload.model_dump(exclude={"version"})
-            events.append(event)
-        room_create = RoomCreate.model_validate(values)
-        created_room = await self._repository.create(room_create)
-        for event in events:
-            await self._eventbus.publish(event)
-        return created_room
+            if event.type == "room_created" and isinstance(event.payload, RoomCreated):
+                await self._repository.create(RoomCreate.model_validate(event.payload), created_by)
+            elif event.type == "members_added" and isinstance(event.payload, MembersAdded):
+                await self._repository.add_members(
+                    [MemberAdd.model_validate(member) for member in event.payload.members]
+                )
+        return ...

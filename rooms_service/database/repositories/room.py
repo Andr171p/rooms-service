@@ -29,10 +29,9 @@ class SQLRoomCreatableRepository:
         :return Агрегат созданной комнаты.
         """
         try:
-            model = RoomModel(**room.model_dump(exclude={"roles", "members"}))
+            model = RoomModel(**room.model_dump(exclude={"roles"}))
             self.session.add(model)
-            room_roles_map = await self.__create_roles(room.id, room.roles)
-            await self.__add_members(room.members, room_roles_map)
+            await self.__create_roles(room.id, room.roles)
             await self.session.flush()
             await self.session.commit()
             return Room.model_validate({**model.to_dict, "roles": room.roles})
@@ -137,3 +136,38 @@ class SQLRoomCreatableRepository:
             for member in members
         ]
         self.session.add_all(models)
+
+    async def _get_room_role(self, room_id: UUID, role_name: Name) -> RoomRoleModel | None:
+        stmt = (
+            select(RoomRoleModel)
+            .where(
+                (RoomRoleModel.room_id == room_id) &
+                (RoomRoleModel.name == role_name)
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def add_members(self, members: list[MemberAdd]) -> None:
+        try:
+            room_role_model = await self._get_room_role(members[0].room_id, members[0].role_name)
+            if room_role_model is None:
+                raise ValueError(
+                    f"Role {members[0].role_name} not found in room {members[0].room_id}!"
+                )
+            models: list[MemberModel] = [
+                MemberModel(
+                    id=member.id,
+                    user_id=member.user_id,
+                    room_id=member.room_id,
+                    room_role_id=room_role_model.id,
+                    status=member.status,
+                    joined_at=member.joined_at,
+                )
+                for member in members
+            ]
+            self.session.add_all(models)
+            await self.session.commit()
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            raise CreationError(f"Error occurred while adding members, error: {e}") from e

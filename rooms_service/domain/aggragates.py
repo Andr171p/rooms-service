@@ -7,7 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, computed_field
 
 from .commands import CreateRoomCommand
-from .events import Event, EventT, MemberAdded, PayloadT, RoomCreated
+from .events import Event, EventT, MemberAdded, MembersAdded, PayloadT, RoomCreated
 from .exceptions import MembersExceededError
 from .rules import ROLES_REGISTRY
 from .value_objects import (
@@ -86,25 +86,16 @@ class Room(_AggregateRoot):
             roles=[ROLES_REGISTRY[SystemRole.OWNER], cls._give_default_role(command.type)]
         )
         cls._register_event(
-            type="room_created", payload=RoomCreated.model_validate({
+            room, type=EventType("room_created"), payload=RoomCreated.model_validate({
                 **room.model_dump(), "version": room.version
             })
         )
-        members_added: list[MemberAdded] = [MemberAdded(
-            user_id=created_by, room_id=room.id, role_name=Name("owner"), version=room.version
-        )]
-        members_added.extend(MemberAdded(
-                user_id=initial_user,
-                room_id=room.id,
-                role_name=cls._give_default_role(room.type).name,
-                version=room.version
-            ) for initial_user in command.initial_users)
-        for member_added in members_added:
-            cls._register_event(type="member_added", payload=member_added)
+        cls.add_member(room, created_by, Name("owner"))
+        cls.add_members(room, command.initial_users)
         return room
 
     @staticmethod
-    def _give_default_role(type: RoomType) -> Role:  # noqa: A002
+    def _define_default_role(type: RoomType) -> Role:  # noqa: A002
         """Определяет системные роли по умолчанию для новых участников"""
         match type:
             case RoomType.DIRECT, RoomType.GROUP:
@@ -148,6 +139,22 @@ class Room(_AggregateRoot):
                 room_id=self.id,
                 role_name=role_name,
                 member_count=self.member_count,
+                version=self.version + 1,
+            )
+        )
+        self.increment_version()
+
+    def add_members(self, users: list[UUID]) -> None:
+        members_added: list[MemberAdded] = [MemberAdded(
+                user_id=user,
+                room_id=self.id,
+                role_name=self._define_default_role(self.type).name,
+                member_count=self.member_count,
+                version=self.version + 1,
+            ) for user in users]
+        self._register_event(
+            type=EventType("members_added"), payload=MembersAdded(
+                members=members_added,
                 version=self.version + 1,
             )
         )
