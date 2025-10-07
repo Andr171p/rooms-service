@@ -7,8 +7,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, computed_field
 
 from .commands import CreateRoomCommand
-from .events import Event, EventT, MemberAdded, MembersAdded, PayloadT, RoomCreated
-from .exceptions import MembersExceededError
+from .entities import Member
+from .events import Event, EventT, MemberAdded, PayloadT, RoomCreated
 from .rules import ROLES_REGISTRY
 from .value_objects import (
     CurrentDatetime,
@@ -82,12 +82,14 @@ class Room(_AggregateRoot):
             name=command.name,
             slug=command.slug,
             visibility=command.visibility,
-            member_count=len(command.initial_users) + 1,
-            roles=[ROLES_REGISTRY[SystemRole.OWNER], cls._give_default_role(command.type)]
+            roles=[ROLES_REGISTRY[SystemRole.OWNER], cls._define_default_role(command.type)]
         )
         cls._register_event(
             room, type=EventType("room_created"), payload=RoomCreated.model_validate({
-                **room.model_dump(), "version": room.version
+                **room.model_dump(),
+                "member_count": len(command.initial_users) + 1,
+                "members": ...,
+                "version": room.version
             })
         )
         cls.add_member(room, created_by, Name("owner"))
@@ -123,23 +125,17 @@ class Room(_AggregateRoot):
             media=RoomMediaSettings(),
         )
 
-    def add_member(self, user_id: UUID, role_name: Name | None = None) -> None:
+    def add_member(self, user_id: UUID, role_name: Name | None = None) -> Member:
         """Добавляет пользователя в комнату"""
-        if self.member_count >= self.settings.members.max_members:
-            raise MembersExceededError(
-                f"Member count exceeded! Max members: {self.settings.members.max_members}"
-            )
         if role_name is None:
-            role = self._define_role()
-            role_name = role.name
-        self.member_count += 1
+            role_name = self._define_default_role(self.type).name
         self._register_event(
             type=EventType("member_added"), payload=MemberAdded(
+                id=...,
                 user_id=user_id,
                 room_id=self.id,
                 role_name=role_name,
-                member_count=self.member_count,
-                version=self.version + 1,
+                permissions=...
             )
         )
         self.increment_version()
@@ -149,11 +145,10 @@ class Room(_AggregateRoot):
                 user_id=user,
                 room_id=self.id,
                 role_name=self._define_default_role(self.type).name,
-                member_count=self.member_count,
                 version=self.version + 1,
             ) for user in users]
         self._register_event(
-            type=EventType("members_added"), payload=MembersAdded(
+            type=EventType("members_added"), payload=MemberAdded(
                 members=members_added,
                 version=self.version + 1,
             )

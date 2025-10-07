@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Annotated, TypeVar
 
 import time
@@ -14,6 +16,7 @@ from .value_objects import (
     EventType,
     Id,
     Name,
+    Permission,
     Role,
     RoomSettings,
     RoomType,
@@ -89,19 +92,15 @@ class RoomCreated(BaseModel):
     created_at: CurrentDatetime
     settings: RoomSettings
     member_count: NonNegativeInt
+    members: list[MemberAdded]
     roles: list[Role]
     version: NonNegativeInt
 
 
 class MemberAdded(BaseModel):
     """Участник добавлен в комнату"""
+    id: UUID
     user_id: UUID
     room_id: UUID
     role_name: Name
-    version: NonNegativeInt
-
-
-class MembersAdded(BaseModel):
-    """Массовое добавление участников в комнату"""
-    members: list[MemberAdded]
-    version: NonNegativeInt
+    permissions: list[Permission]
