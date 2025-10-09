@@ -1,7 +1,7 @@
 from abc import ABC
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from .value_objects import Name, RoomType, RoomVisibility, Slug
 
@@ -28,3 +28,14 @@ class CreateRoomCommand(Command):
     type: RoomType
     visibility: RoomVisibility
     initial_users: list[UUID]
+
+
+class AddMembersCommand(Command):
+    """Команда для добавления участников в комнату.
+
+    Attributes:
+        users: Пользователи, которых нужно добавить.
+    """
+    users: list[UUID] = Field(
+        default_factory=list, description="Пользователи, которых нужно добавить"
+    )

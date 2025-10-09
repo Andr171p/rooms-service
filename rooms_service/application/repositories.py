@@ -66,15 +66,16 @@ class CRUDRepository(ReadableRepository[EntityT], Protocol[EntityT]):
 
 class RoomRepository(ReadableRepository[Room]):
     @abstractmethod
-    async def create(self, room: RoomCreate) -> Room: pass
-
-    @abstractmethod
-    async def add_member(self, member: MemberAdd) -> Member:
-        """Добавляет участника в комнату"""
+    async def create(self, room: RoomCreate) -> Room:
+        """Создаёт комнату"""
 
     @abstractmethod
     async def add_members(self, members: list[MemberAdd]) -> None:
         """Массовое добавление участников"""
+
+    @abstractmethod
+    async def add_role(self, role: Role) -> Role:
+        """Добавляет кастомную роль для комнаты"""
 
     @abstractmethod
     async def get_members(self, id: UUID, limit: PositiveInt, page: PositiveInt) -> list[Member]:  # noqa: A002

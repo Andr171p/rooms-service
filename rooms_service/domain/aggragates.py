@@ -92,20 +92,20 @@ class Room(AggregateRoot):
         )
         return room
 
-    def add_members(self, user_ids: list[UUID]) -> list[Member]:
+    def add_members(self, users: list[UUID]) -> list[Member]:
         """Добавляет участников в комнату
 
-        :param user_ids: Идентификаторы пользователей.
+        :param users: Идентификаторы пользователей.
         :return Добавленные сущности пользователей.
         """
         members: list[Member] = [
             Member.model_validate({
-                "user_id": user_id,
+                "user": user,
                 "room_id": self.id,
                 "role": self._define_default_role(self.type),
                 "nickname": "empty"
             })
-            for user_id in user_ids
+            for user in users
         ]
         self._register_event(
             type=EventType("members_added"), payload=MembersAdded(members=members)

@@ -23,8 +23,7 @@ class SQLRoomCreatableRepository:
     session: "AsyncSession"
 
     async def create(self, room: RoomCreate) -> Room:
-        """Создание комнаты вместе с ролями, правами и участниками.
-        Атомарная операция.
+        """Создание комнаты вместе с ролями, правами и участниками в рамках одной транзакции.
 
         :param room: DTO для создания комнаты.
         :return Агрегат созданной комнаты.
@@ -33,7 +32,7 @@ class SQLRoomCreatableRepository:
             model = RoomModel(**room.model_dump(exclude={"roles"}))
             self.session.add(model)
             room_roles_map = await self.__create_room_roles(room.id, room.roles)
-            await self.__add_members_with_room_role_map(room.members, room_roles_map)
+            await self.__save_members(room.members, room_roles_map)
             await self.session.flush()
             await self.session.commit()
             return Room.model_validate({**model.to_dict, "roles": room.roles})
@@ -47,7 +46,8 @@ class SQLRoomCreatableRepository:
             raise CreationError(f"Error occurred while room creation, error: {e}") from e
 
     async def __create_room_roles(self, room_id: UUID, roles: list[Role]) -> dict[Name, UUID]:
-        """Создаёт роли внутри комнаты с правами.
+        """Создаёт роли внутри комнаты с правами. Записывает данные в таблицу 'room_roles'
+        и 'room_role_permissions' (внутри метода используется метод __add_room_role_permissions)
 
         :param room_id: Комната в которую нужно добавить роли.
         :param roles: Роли, которые нужно добавить.
@@ -116,7 +116,7 @@ class SQLRoomCreatableRepository:
             await self.session.execute(stmt, values)
 
     async def _find_system_roles(self, role_names: set[Name]) -> Sequence[RoleModel]:
-        """Находит системную роль по её уникальному имени.
+        """Находит системные роль по последовательности уникальных имён.
 
         :param role_names: Уникальные имена ролей.
         :return SQLAlchemy модели ролей.
@@ -125,13 +125,13 @@ class SQLRoomCreatableRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def __add_members_with_room_role_map(
+    async def __save_members(
             self, members: list[MemberAdd], room_roles_map: dict[Name, UUID]
     ) -> None:
-        """Добавляет участников в комнату.
+        """Сохраняет участников в комнату.
 
         :param members: DTO участников для добавления.
-        :param room_roles_map: Маппинг названий ролей и их room_role_id.
+        :param room_roles_map: Маппинг role_name и их room_role_id.
         """
         models = [
             MemberModel(
@@ -148,6 +148,15 @@ class SQLRoomCreatableRepository:
     async def _find_room_roles(
             self, room_id: UUID, role_names: set[Name]
     ) -> Sequence[RoomRoleModel]:
+        """Находит роли внутри комнаты по последовательности уникальных имён ролей.
+        Выполняет поиск за один запрос по совпадению role_names.
+        ПРИМЕЧАНИЕ: количество найденных ролей может быть меньше количества room_roles, т.к
+        роль с таким room_roles могла быть не создана.
+
+        :param room_id: Комната в которой нужно найти роли.
+        :param role_names: Уникальная последовательность имён ролей.
+        :return Найденные роли внутри комнаты.
+        """
         stmt = (
             select(RoomRoleModel)
             .where(
@@ -159,6 +168,13 @@ class SQLRoomCreatableRepository:
         return result.scalars().all()
 
     async def add_members(self, members: list[MemberAdd]) -> None:
+        """Добавляет участников в комнату.
+
+        :param members: DTO для добавления участников.
+        :raise ValueError:
+             - При пустом списке участников.
+             - Комнатная роль не найдена.
+        """
         if not members:
             raise ValueError("Empty members list!")
         try:
@@ -176,7 +192,7 @@ class SQLRoomCreatableRepository:
                 raise ValueError(
                     f"Roles not found in room {room_id}: {missing_roles}!"
                 )
-            await self.__add_members_with_room_role_map(members, room_roles_map)
+            await self.__save_members(members, room_roles_map)
             await self.session.commit()
         except SQLAlchemyError as e:
             await self.session.rollback()

@@ -5,10 +5,10 @@ from dishka.integrations.fastapi import FromDishka as Depends
 from fastapi import APIRouter, status
 from fastauth import CurrentUser
 
-from ...application.dto import MemberAdd
-from ...application.usecases import CreateRoomUseCase
+from ...application.usecases import AddMembersUseCase, CreateRoomUseCase
 from ...domain.aggragates import Room
-from ...domain.commands import CreateRoomCommand
+from ...domain.commands import AddMembersCommand, CreateRoomCommand
+from ...domain.entities import Member
 from ...domain.value_objects import Role
 
 rooms_router = APIRouter(prefix="/rooms", tags=["Rooms"], route_class=DishkaRoute)
@@ -43,4 +43,7 @@ async def create_room_role(room_id: UUID, role: Role) -> ...: ...
     response_model=...,
     summary="Добавляет участника в комнату"
 )
-async def add_member_to_room(room_id: UUID) -> ...: ...
+async def add_members(
+        room_id: UUID, command: AddMembersCommand, usecase: Depends[AddMembersUseCase]
+) -> list[Member]:
+    return await usecase.execute(command, room_id=room_id)
