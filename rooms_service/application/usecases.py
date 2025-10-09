@@ -1,9 +1,8 @@
 from abc import ABC
 from uuid import UUID
 
-from ..domain.aggragates import Room
+from ..domain.aggragates import AggregateRoot, Room
 from ..domain.commands import CreateRoomCommand
-from ..domain.events import Event, EventT, MembersAdded, RoomCreated
 from .dto import MemberAdd, RoomCreate
 from .eventbus import EventBus
 from .repositories import RoomRepository
@@ -12,8 +11,8 @@ from .repositories import RoomRepository
 class UseCase(ABC):
     _eventbus: "EventBus"
 
-    async def _publish_events(self, events: list[EventT]) -> None:
-        for event in events:
+    async def _publish_events(self, aggregate_root: AggregateRoot) -> None:
+        for event in aggregate_root.collect_events():
             await self._eventbus.publish(event)
 
 
@@ -25,11 +24,15 @@ class CreateRoomUseCase(UseCase):
 
     async def execute(self, command: CreateRoomCommand, created_by: UUID) -> Room:
         room = Room.create(command, created_by)
-        for event in room.collect_events():
-            if event.type == "room_created" and isinstance(event.payload, RoomCreated):
-                await self._repository.create(RoomCreate.model_validate(event.payload), created_by)
-            elif event.type == "members_added" and isinstance(event.payload, MembersAdded):
-                await self._repository.add_members(
-                    [MemberAdd.model_validate(member) for member in event.payload.members]
-                )
-        return ...
+        members = room.add_members(command.initial_users)
+        room_create = RoomCreate.model_validate({
+            **room.model_dump(),
+            "members": [
+                MemberAdd.model_validate({
+                    **room.model_dump(exclude={"role"}), "role_name": member.role.name
+                })
+                for member in members]
+        })
+        created_room = await self._repository.create(room_create)
+        await self._publish_events(room)
+        return created_room

@@ -10,8 +10,7 @@ from pydantic import BaseModel, PositiveInt
 
 from ..domain.aggragates import Room
 from ..domain.entities import Member
-from ..domain.events import RoomCreated, MemberAdded
-from ..domain.value_objects import Role, SystemRole
+from ..domain.value_objects import Role
 from .dto import MemberAdd, RoomCreate
 
 EntityT = TypeVar("EntityT", bound=BaseModel)
@@ -67,10 +66,7 @@ class CRUDRepository(ReadableRepository[EntityT], Protocol[EntityT]):
 
 class RoomRepository(ReadableRepository[Room]):
     @abstractmethod
-    async def create_role(self, role: Role) -> Role: pass
-
-    @abstractmethod
-    async def create(self, room: RoomCreate) -> Room: ...
+    async def create(self, room: RoomCreate) -> Room: pass
 
     @abstractmethod
     async def add_member(self, member: MemberAdd) -> Member:

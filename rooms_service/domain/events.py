@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, computed_fiel
 
 from ..shared import current_datetime
 from .constants import SOURCE
+from .entities import Member
 from .value_objects import (
     CorrelationId,
     CurrentDatetime,
@@ -92,15 +93,10 @@ class RoomCreated(BaseModel):
     created_at: CurrentDatetime
     settings: RoomSettings
     member_count: NonNegativeInt
-    members: list[MemberAdded]
+    initial_members: list[Member]
     roles: list[Role]
     version: NonNegativeInt
 
 
-class MemberAdded(BaseModel):
-    """Участник добавлен в комнату"""
-    id: UUID
-    user_id: UUID
-    room_id: UUID
-    role_name: Name
-    permissions: list[Permission]
+class MembersAdded(BaseModel):
+    members: list[Member]

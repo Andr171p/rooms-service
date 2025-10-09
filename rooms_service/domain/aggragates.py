@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, computed_fiel
 
 from .commands import CreateRoomCommand
 from .entities import Member
-from .events import Event, EventT, MemberAdded, PayloadT, RoomCreated
+from .events import Event, EventT, MembersAdded, PayloadT, RoomCreated
 from .rules import ROLES_REGISTRY
 from .value_objects import (
     CurrentDatetime,
@@ -29,7 +29,7 @@ from .value_objects import (
 )
 
 
-class _AggregateRoot(BaseModel, ABC):
+class AggregateRoot(BaseModel, ABC):
     id: Id
     _events: list[EventT] = Field(default_factory=list, exclude=True)
     _version: int = Field(default=1, exclude=True)
@@ -43,7 +43,7 @@ class _AggregateRoot(BaseModel, ABC):
         """Текущая версия агрегата"""
         return self._version
 
-    def increment_version(self) -> None:
+    def _increment_version(self) -> None:
         """Увеличение версии агрегата"""
         self._version += 1
 
@@ -59,7 +59,7 @@ class _AggregateRoot(BaseModel, ABC):
             yield self._events.pop(0)
 
 
-class Room(_AggregateRoot):
+class Room(AggregateRoot):
     created_by: UUID
     type: RoomType
     name: Name | None = None
@@ -82,19 +82,36 @@ class Room(_AggregateRoot):
             name=command.name,
             slug=command.slug,
             visibility=command.visibility,
-            roles=[ROLES_REGISTRY[SystemRole.OWNER], cls._define_default_role(command.type)]
+            member_count=len(command.initial_users) + 1,
+            roles=[ROLES_REGISTRY[SystemRole.OWNER], cls._define_default_role()]
         )
         cls._register_event(
             room, type=EventType("room_created"), payload=RoomCreated.model_validate({
-                **room.model_dump(),
-                "member_count": len(command.initial_users) + 1,
-                "members": ...,
-                "version": room.version
+                **room.model_dump(), "version": room.version
             })
         )
-        cls.add_member(room, created_by, Name("owner"))
-        cls.add_members(room, command.initial_users)
         return room
+
+    def add_members(self, user_ids: list[UUID]) -> list[Member]:
+        """Добавляет участников в комнату
+
+        :param user_ids: Идентификаторы пользователей.
+        :return Добавленные сущности пользователей.
+        """
+        members: list[Member] = [
+            Member.model_validate({
+                "user_id": user_id,
+                "room_id": self.id,
+                "role": self._define_default_role(self.type),
+                "nickname": "empty"
+            })
+            for user_id in user_ids
+        ]
+        self._register_event(
+            type=EventType("members_added"), payload=MembersAdded(members=members)
+        )
+        self._increment_version()
+        return members
 
     @staticmethod
     def _define_default_role(type: RoomType) -> Role:  # noqa: A002
@@ -124,33 +141,3 @@ class Room(_AggregateRoot):
             members=RoomMembersSettings(join_permission=join_permission),
             media=RoomMediaSettings(),
         )
-
-    def add_member(self, user_id: UUID, role_name: Name | None = None) -> Member:
-        """Добавляет пользователя в комнату"""
-        if role_name is None:
-            role_name = self._define_default_role(self.type).name
-        self._register_event(
-            type=EventType("member_added"), payload=MemberAdded(
-                id=...,
-                user_id=user_id,
-                room_id=self.id,
-                role_name=role_name,
-                permissions=...
-            )
-        )
-        self.increment_version()
-
-    def add_members(self, users: list[UUID]) -> None:
-        members_added: list[MemberAdded] = [MemberAdded(
-                user_id=user,
-                room_id=self.id,
-                role_name=self._define_default_role(self.type).name,
-                version=self.version + 1,
-            ) for user in users]
-        self._register_event(
-            type=EventType("members_added"), payload=MemberAdded(
-                members=members_added,
-                version=self.version + 1,
-            )
-        )
-        self.increment_version()

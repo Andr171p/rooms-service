@@ -5,10 +5,10 @@ from dishka.integrations.fastapi import FromDishka as Depends
 from fastapi import APIRouter, status
 from fastauth import CurrentUser
 
-from rooms_service.domain.commands import CreateRoomCommand
-
+from ...application.dto import MemberAdd
 from ...application.usecases import CreateRoomUseCase
 from ...domain.aggragates import Room
+from ...domain.commands import CreateRoomCommand
 from ...domain.value_objects import Role
 
 rooms_router = APIRouter(prefix="/rooms", tags=["Rooms"], route_class=DishkaRoute)

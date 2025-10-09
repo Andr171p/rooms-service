@@ -32,6 +32,7 @@ class RoomCreate(_DTO):
     visibility: RoomVisibility
     created_at: CurrentDatetime
     member_count: NonNegativeInt
+    members: list[MemberAdd]
     roles: list[Role]
     version: NonNegativeInt
 
